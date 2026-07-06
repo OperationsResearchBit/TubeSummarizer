@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI YouTube Transcript Summarizer</title>
+    <style>
+        :root {
+            --primary: #ff0000;
+            --primary-hover: #cc0000;
+            --bg: #f9f9f9;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #dddddd;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 24px;
+            color: #111;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 15px;
+            font-weight: 500;
+            color: #666;
+            display: none;
+        }
+        .output-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f1f1f1;
+            border-left: 4px solid var(--primary);
+            border-radius: 4px;
+            white-space: pre-wrap;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>YouTube Transcript Summarizer</h1>
+    
+    <div class="form-group">
+        <label for="apiKey">OpenAI API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-proj-...">
+    </div>
+
+    <div class="form-group">
+        <label for="videoUrl">YouTube Video URL</label>
+        <input type="text" id="videoUrl" placeholder="https://youtube.com...">
+    </div>
+
+    <button id="submitBtn" onclick="processVideo()">Generate Summary</button>
+
+    <div id="statusMessage" class="status"></div>
+    <div id="output" class="output-box"></div>
+</div>
+
+<script>
+    // Extract unique 11-character video ID from common URL formats
+    function extractVideoId(url) {
+        const pattern = /(?:v=|\/shorts\/|\/embed\/|\/v\/|youtu\.be\/|\/watch\?v=|\/watch\?.+&v=)([^#\&\?]{11})/;
+        const match = url.match(pattern);
+        return match ? match[1] : null;
+    }
+
+    // Main controller function
+    async function processVideo() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const videoUrl = document.getElementById('videoUrl').value.trim();
+        const statusDiv = document.getElementById('statusMessage');
+        const outputDiv = document.getElementById('output');
+        const btn = document.getElementById('submitBtn');
+
+        if (!apiKey || !videoUrl) {
+            alert('Please fill out both the API Key and the Video URL fields.');
+            return;
+        }
+
+        const videoId = extractVideoId(videoUrl);
+        if (!videoId) {
+            alert('Invalid YouTube URL format.');
+            return;
+        }
+
+        // UI Reset and Loading state
+        statusDiv.style.display = 'block';
+        outputDiv.style.display = 'none';
+        btn.disabled = true;
+        
+        try {
+            // 1. Fetch transcript using an open-source caption scraper API
+            statusDiv.innerText = 'Fetching video transcript...';
+            const transcriptResponse = await fetch(`https://vercel.app{videoId}`);
+            
+            if (!transcriptResponse.ok) {
+                throw new Error('Failed to retrieve captions. Ensure the video has subtitles enabled.');
+            }
+            
+            const transcriptData = await transcriptResponse.json();
+            // Combine the separate text chunks into a unified string block
+            const fullTranscript = transcriptData.map(item => item.text).join(' ');
+
+            // 2. Transmit transcript to OpenAI API for extraction
+            statusDiv.innerText = 'Analyzing content with AI...';
+            const openaiResponse = await fetch('https://openai.com', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o-mini', // Cost-effective, high-speed model optimized for web inputs
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an elite video summary tool. Extract the core arguments, tools, resources, and actionable strategies from this transcript into clean text notes.'
+                        },
+                        {
+                            role: 'user',
+                            content: `Summarize this text:\n\n${fullTranscript}`
+                        }
+                    ],
+                    temperature: 0.3
+                })
+            });
+
+            if (!openaiResponse.ok) {
+                const errData = await openaiResponse.json();
+                throw new Error(errData.error?.message || 'OpenAI API Error');
+            }
+
+            const aiData = await openaiResponse.json();
+            const summaryText = aiData.choices[0].message.content;
+
+            // 3. Render Output
+            statusDiv.innerText = 'Done!';
+            outputDiv.innerText = summaryText;
+            outputDiv.style.display = 'block';
+
+        } catch (error) {
+            statusDiv.innerText = 'An error occurred.';
+            alert(error.message);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
