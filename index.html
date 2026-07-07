@@ -1,202 +1,1140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI YouTube Transcript Summarizer</title>
-    <style>
-        :root {
-            --primary: #ff0000;
-            --primary-hover: #cc0000;
-            --bg: #f9f9f9;
-            --card-bg: #ffffff;
-            --text: #333333;
-            --border: #dddddd;
-        }
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 40px auto;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        h1 {
-            margin-top: 0;
-            font-size: 24px;
-            color: #111;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .status {
-            margin-top: 15px;
-            font-weight: 500;
-            color: #666;
-            display: none;
-        }
-        .output-box {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f1f1f1;
-            border-left: 4px solid var(--primary);
-            border-radius: 4px;
-            white-space: pre-wrap;
-            display: none;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playlist → Newsletter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF9F3; --paper-raised:#FFFFFF; --paper-dim:#F1ECDE;
+    --rule:#E3DCC8; --ink:#1C1B1F; --ink-soft:#615C4E;
+    --accent:#0F6B5C; --accent-ink:#083F36; --accent-soft:#E1EFEA;
+    --gold:#A9781E; --gold-soft:#F4E9CF;
+    --danger:#B3261E; --danger-soft:#F8E6E4;
+    --shadow: 0 1px 2px rgba(28,27,31,.04), 0 4px 16px rgba(28,27,31,.06);
+    --radius: 12px;
+    color-scheme: light;
+  }
+  html.dark{
+    --paper:#15171B; --paper-raised:#1D2025; --paper-dim:#101216;
+    --rule:#2B2E34; --ink:#ECE9E0; --ink-soft:#A6A296;
+    --accent:#3FBFA0; --accent-ink:#D7F3EA; --accent-soft:#173029;
+    --gold:#D9B25E; --gold-soft:#2A2416;
+    --danger:#E5867E; --danger-soft:#3A1E1C;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono', monospace;}
+  .serif{font-family:'Source Serif 4', Georgia, serif;}
+  a{color:var(--accent-ink); }
+  .wrap{max-width:880px; margin:0 auto; padding:0 20px 90px;}
+
+  /* ---- Header ---- */
+  header.app-head{
+    border-bottom:1px solid var(--rule); background:var(--paper);
+    position:sticky; top:0; z-index:20;
+  }
+  .head-inner{
+    max-width:880px; margin:0 auto; padding:18px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:8px; object-fit:cover; flex-shrink:0;
+  }
+  .brand h1{font-size:16px; margin:0; font-weight:700; letter-spacing:-.01em;}
+  .brand p{margin:0; font-size:12px; color:var(--ink-soft);}
+  .theme-btn{
+    border:1px solid var(--rule); background:var(--paper-raised); color:var(--ink);
+    width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .theme-btn:hover{background:var(--paper-dim);}
+
+  /* ---- Sections ---- */
+  section.panel{
+    background:var(--paper-raised); border:1px solid var(--rule); border-radius:var(--radius);
+    padding:22px 24px; margin-top:22px; box-shadow:var(--shadow);
+  }
+  .panel h2{
+    font-family:'Source Serif 4', serif; font-size:19px; margin:0 0 4px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .step-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; background:var(--accent-soft);
+    color:var(--accent-ink); font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace;
+  }
+  .panel .sub{margin:0 0 16px; color:var(--ink-soft); font-size:13.5px;}
+
+  label{display:block; font-size:12.5px; font-weight:600; margin-bottom:6px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;}
+  .field{margin-bottom:14px;}
+  .row{display:flex; gap:14px; flex-wrap:wrap;}
+  .row > .field{flex:1; min-width:180px;}
+  input[type=text], input[type=password], input[type=number], input[type=url], textarea, select{
+    width:100%; padding:10px 12px; border:1px solid var(--rule); border-radius:8px;
+    background:var(--paper); color:var(--ink); font-size:14px; font-family:inherit;
+  }
+  textarea{resize:vertical; min-height:80px; font-family:'JetBrains Mono', monospace; font-size:12.5px;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  .hint{font-size:12px; color:var(--ink-soft); margin-top:5px;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); font-weight:400; text-transform:none; letter-spacing:0;}
+  .checkbox-row input{width:auto;}
+
+  .segmented{display:flex; border:1px solid var(--rule); border-radius:8px; overflow:hidden; width:fit-content;}
+  .segmented button{
+    border:none; background:var(--paper); color:var(--ink-soft); padding:8px 14px; font-size:13px;
+    cursor:pointer; font-weight:600; font-family:inherit;
+  }
+  .segmented button.active{background:var(--accent); color:#fff;}
+  .segmented button + button{border-left:1px solid var(--rule);}
+
+  button.btn{
+    border:none; border-radius:8px; padding:10px 18px; font-size:14px; font-weight:600;
+    cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-ink);}
+  .btn-primary:disabled{background:var(--rule); color:var(--ink-soft); cursor:not-allowed;}
+  .btn-outline{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn-outline:hover{background:var(--paper-dim);}
+  .btn-ghost{background:transparent; color:var(--ink-soft); padding:8px 10px;}
+  .btn-ghost:hover{color:var(--ink);}
+  .btn-sm{padding:6px 12px; font-size:12.5px;}
+
+  .error-msg{
+    background:var(--danger-soft); color:var(--danger); border:1px solid var(--danger);
+    border-radius:8px; padding:10px 14px; font-size:13px; margin:12px 0;
+  }
+  .info-msg{
+    background:var(--gold-soft); color:var(--gold); border:1px solid var(--gold);
+    border-radius:8px; padding:10px 14px; font-size:13px; margin:12px 0;
+  }
+
+  /* ---- Video ticket cards ---- */
+  .video-list{display:flex; flex-direction:column; gap:10px; margin-top:6px;}
+  .ticket{
+    display:flex; gap:12px; border:1px solid var(--rule); border-radius:10px;
+    background:var(--paper); position:relative; overflow:hidden; padding:10px;
+  }
+  .ticket::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent);
+  }
+  .ticket-thumb{
+    width:88px; height:56px; border-radius:6px; object-fit:cover; flex-shrink:0; background:var(--paper-dim);
+  }
+  .ticket-body{flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px;}
+  .ticket-title{font-size:13.5px; font-weight:600; line-height:1.35; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .ticket-meta{font-size:11.5px; color:var(--ink-soft); font-family:'JetBrains Mono', monospace;}
+  .ticket-check{display:flex; align-items:center; padding:0 4px;}
+  .ticket-check input{width:17px; height:17px;}
+  .ticket-status{
+    font-size:11px; padding:3px 8px; border-radius:20px; font-weight:600; white-space:nowrap;
+    align-self:flex-start;
+  }
+  .st-queued{background:var(--paper-dim); color:var(--ink-soft);}
+  .st-working{background:var(--gold-soft); color:var(--gold);}
+  .st-done{background:var(--accent-soft); color:var(--accent-ink);}
+  .st-error{background:var(--danger-soft); color:var(--danger);}
+  .st-skipped{background:var(--paper-dim); color:var(--ink-soft); text-decoration:line-through;}
+
+  .stub-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+
+  .paste-fallback{
+    margin-top:8px; padding:12px; background:var(--paper-dim); border-radius:8px; border:1px dashed var(--rule);
+  }
+  .paste-fallback textarea{min-height:90px; font-family:'JetBrains Mono',monospace;}
+  .paste-fallback .row{margin-top:8px;}
+
+  .log{
+    font-family:'JetBrains Mono', monospace; font-size:12px; background:var(--paper-dim);
+    border-radius:8px; padding:12px 14px; max-height:180px; overflow-y:auto; color:var(--ink-soft);
+    margin-top:14px;
+  }
+  .log div{margin-bottom:4px;}
+  .log .ok{color:var(--accent-ink);}
+  .log .bad{color:var(--danger);}
+
+  .progress-bar{height:6px; border-radius:4px; background:var(--paper-dim); overflow:hidden; margin-top:14px;}
+  .progress-fill{height:100%; background:var(--accent); transition:width .3s ease; width:0%;}
+
+  /* ---- Subject line chips ---- */
+  .subject-list{display:flex; flex-direction:column; gap:8px; margin-top:8px;}
+  .subject-chip{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--paper); border:1px solid var(--rule); border-radius:8px; padding:9px 12px; font-size:13.5px;
+  }
+
+  /* ---- Output tabs / preview ---- */
+  .tabbar{display:flex; gap:4px; border-bottom:1px solid var(--rule); margin-bottom:16px;}
+  .tabbar button{
+    background:none; border:none; padding:9px 4px; margin-right:18px; font-size:13.5px; font-weight:600;
+    color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; font-family:inherit;
+  }
+  .tabbar button.active{color:var(--accent-ink); border-color:var(--accent);}
+  .preview{
+    background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:26px 28px;
+  }
+  .preview h1{font-family:'Source Serif 4',serif; font-size:26px; margin:0 0 14px;}
+  .preview h2{font-family:'Source Serif 4',serif; font-size:19px; margin:22px 0 4px;}
+  .preview h3{font-size:15px; margin:16px 0 4px;}
+  .preview p{font-size:14.5px; margin:0 0 12px; color:var(--ink);}
+  .preview hr{border:none; border-top:1px solid var(--rule); margin:18px 0;}
+  .preview em{color:var(--ink-soft); font-style:normal; font-family:'JetBrains Mono',monospace; font-size:12px;}
+  .preview a{color:var(--accent-ink); font-weight:600;}
+  #rawMd{width:100%; min-height:420px; font-size:12.5px; line-height:1.6;}
+
+  .action-bar{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+
+  .footer-note{text-align:center; color:var(--ink-soft); font-size:12px; margin-top:36px;}
+  .footer-note a{color:var(--ink-soft); text-decoration:underline;}
+
+  details.advanced{margin-top:6px;}
+  details.advanced summary{cursor:pointer; font-size:12.5px; color:var(--ink-soft); font-weight:600;}
+  details.advanced .panel-inner{margin-top:10px;}
+
+  @media (max-width:600px){
+    .panel{padding:18px 16px;}
+    .ticket-thumb{width:70px; height:46px;}
+  }
+</style>
 </head>
 <body>
 
-<div class="container">
-    <h1>YouTube Transcript Summarizer</h1>
-    
-    <div class="form-group">
-        <label for="apiKey">OpenAI API Key</label>
-        <input type="password" id="apiKey" placeholder="sk-proj-...">
+<header class="app-head">
+  <div class="head-inner">
+    <div class="brand">
+      <img class="brand-mark" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAELklEQVR4AeycQW7bMBBFqaTbZNFzODdI7xI4xwqawzQ9QdNcowuny6JqJoCAwggtWeJwhpxnhJEticP5/z9oR10kPqEdAIDQ8acEAAAQ3IHg8nkCAEBwB4LL5wkAAMEdCCp/ks0TYHIi6BEAggY/yQaAyYmgRwAIGvwkGwAmJ4IeASBo8JNsAJicCHoEgGDBH8s1BeD1Pu0O+2G0HL/v0s2xKZF+mwEgoY/j8Gxt9t+L4Yf0Yt2H1fomAHg03GNPNaCoDsBhn25rCFuzxq+79GXNvJbnVAcgpeEpOf18uhi+OW1NrS0DANS0UHiFAwCwwrSepgBAT2me0JK7BAA5Z4KcB4AgQedkAkDOmSDnASBI0DmZAJBzJsh5AAgSdE4mAOScCXIeADoPek4eAMw51Pl1AOg84Dl5ADDnUOfXAaDzgOfkAcCcQ51fB4DOA56TBwBzDnV+HQA6DXipLABY6lSn9wFAp8EulQUAS53q9D4A6DTYpbIMABjDbb5YGobFfdUBuH5M3y2EsubHDlQHQNq4fhwHOTLsHTABQGQLBMPluJPvjHIOnFvJDABp9OohvQgInsbB+H0Fx+trv7/AFACBgHHaAe33FwDAaf/dXJUng0YzAKDhqlJNjfcXAIBSWBplNd5fAAAaSTVUEwAaCkujVQDQcNWg5tolAWCtc53MA4BOglwrAwDWOtfJPADoJMi1MgBgrXOdzAOAToJcKwMA1jrXyTwAaDzIre0DwFYHG58PAI0HuLV9ANjqYOPzAaDxALe2DwBbHWx8PgA0HuDW9gFgq4ONzweARgMs1TYAlHKy0ToA0GhwpdoGgFJONloHABoNrlTbAFDKyQp1/qTy71YAgArBlVris8K7FQCgVDrKdWQHtcYSAKDhasGawzDe/B9+wdLvpUwBeL1PO9n16mmI2Z7G1df08z0ppX9mAEjo4zg8K+mi7EIHTACQ8Bf2x23KDlQH4LBPt8qaKH+GA9UBSGl4SnzcOGAAgBvtNPLmAAC8mRD5DwAaSV+rTQDQcraRugDQSFBabQKAlrON1AWARoLSahMAtJxtpC4ANBKUVpsAoOVsI3UBwHlQ2u0BgLbDzusDgPOAtNsDAG2HndcHAOcBabcHANoOO68PAM4D0m4PALQddl4fAJwGVKstAKjltNN1AMBpMLXaAoBaTjtdBwCcBlOrLQMAyu9xL2WWxv77Ur1p1akOwLXCHvdS5mjsvy/Vm1ad6gCIENl9K0dPw2NPNfwxAUCEieHD5biT75ZDe//9udpq328GgAi9ekgvAoLl0N5/Lzo9D1MAPBsTpTcAiJJ0RicAZIyJchoAoiSd0QkAGWOinAaAKElndAJAxpjap63WAwAr552sCwBOgrBqAwCsnHeyLgA4CcKqDQCwct7JugDgJAirNgDAynkn6wKAcRDWy/8DAAD//xrxuTwAAAAGSURBVAMAGX3xENdKSOAAAAAASUVORK5CYII=" alt="Operations Research Bit logo">
+      <div>
+        <h1>Transcript Summarizer</h1>
+        <p>by Operations Research Bit</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <a href="https://substack.com/@operationsresearchbit" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;">↗ Substack</a>
+      <button class="theme-btn" id="themeToggle" title="Toggle dark mode">◐</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- STEP 1: AI + Newsletter setup -->
+  <section class="panel">
+    <h2><span class="step-badge">1</span>Set up</h2>
+    <p class="sub">An API key is optional. Without one, summaries are written by a built-in keyword-based summarizer instead of an AI model. Any key you add is sent only from your browser straight to the provider — never stored anywhere but this device.</p>
+
+    <div class="row">
+      <div class="field">
+        <label for="provider">AI provider (optional)</label>
+        <select id="provider">
+          <option value="none">No AI — use built-in summarizer</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </div>
+      <div class="field" id="apiKeyField">
+        <label for="apiKey">API key</label>
+        <input type="password" id="apiKey" placeholder="Paste your API key">
+      </div>
+    </div>
+    <div class="checkbox-row" style="margin-bottom:14px;">
+      <input type="checkbox" id="rememberKey">
+      <label for="rememberKey" style="margin:0; text-transform:none; font-size:13px; color:var(--ink-soft);">Remember key on this device (saved in your browser only)</label>
     </div>
 
-    <div class="form-group">
-        <label for="videoUrl">YouTube Video URL</label>
-        <input type="text" id="videoUrl" placeholder="https://youtube.com...">
+    <div class="row">
+      <div class="field">
+        <label for="newsletterName">Newsletter name</label>
+        <input type="text" id="newsletterName" placeholder="e.g. The Weekly Watchlist" value="This Week's Watchlist">
+      </div>
+      <div class="field">
+        <label for="voice">Editorial voice</label>
+        <input type="text" id="voice" placeholder="e.g. warm, curious, a little nerdy" value="warm, curious, a little nerdy">
+      </div>
     </div>
 
-    <button id="submitBtn" onclick="processVideo()">Generate Summary</button>
+    <div class="row">
+      <div class="field">
+        <label>Summary length</label>
+        <div class="segmented" id="summaryLengthSwitch">
+          <button type="button" class="active" data-length="brief">Brief</button>
+          <button type="button" data-length="standard">Standard</button>
+          <button type="button" data-length="detailed">Detailed</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="maxVideos">Max videos to include</label>
+        <input type="number" id="maxVideos" value="10" min="1" max="30">
+      </div>
+    </div>
 
-    <div id="statusMessage" class="status"></div>
-    <div id="output" class="output-box"></div>
+    <details class="advanced">
+      <summary>Custom intro note &amp; call-to-action (optional)</summary>
+      <div class="panel-inner">
+        <div class="field">
+          <label for="customNote">A note to weave into the intro</label>
+          <textarea id="customNote" style="font-family:inherit; min-height:60px;" placeholder="e.g. mention that this issue is all about AI agents"></textarea>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="ctaText">Call-to-action text</label>
+            <input type="text" id="ctaText" placeholder="Subscribe for more" value="Subscribe for more like this">
+          </div>
+          <div class="field">
+            <label for="ctaUrl">Call-to-action link</label>
+            <input type="url" id="ctaUrl" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- STEP 2: Pick videos -->
+  <section class="panel">
+    <h2><span class="step-badge">2</span>Pick your videos</h2>
+    <p class="sub">Load a playlist, or paste video links directly.</p>
+
+    <div class="segmented" id="inputModeSwitch">
+      <button class="active" data-mode="playlist">Playlist URL</button>
+      <button data-mode="paste">Paste video links</button>
+    </div>
+
+    <div id="playlistMode" style="margin-top:14px;">
+      <div class="row" style="align-items:flex-end;">
+        <div class="field" style="flex:3;">
+          <label for="playlistUrl">YouTube playlist URL</label>
+          <input type="text" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=...">
+        </div>
+        <div class="field" style="flex:1; min-width:140px;">
+          <button class="btn btn-outline" id="loadPlaylistBtn" style="width:100%;">Load videos</button>
+        </div>
+      </div>
+      <div id="playlistLoadStatus"></div>
+      <div id="playlistCheckboxList" class="video-list"></div>
+    </div>
+
+    <div id="pasteMode" style="margin-top:14px; display:none;">
+      <div class="field">
+        <label for="pasteUrls">One video URL (or ID) per line</label>
+        <textarea id="pasteUrls" style="font-family:'JetBrains Mono',monospace;" placeholder="https://www.youtube.com/watch?v=...
+https://youtu.be/...."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3: Generate -->
+  <section class="panel">
+    <h2><span class="step-badge">3</span>Generate the newsletter</h2>
+    <p class="sub">Fetches each transcript, summarizes it in your voice, then drafts the full issue.</p>
+    <button class="btn btn-primary" id="generateBtn">Generate newsletter</button>
+    <button class="btn btn-outline" id="startOverBtn" style="display:none;">Start over</button>
+
+    <div class="progress-bar" id="progressBar" style="display:none;"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="video-list" id="pipelineList" style="margin-top:14px;"></div>
+    <div class="log" id="logPanel" style="display:none;"></div>
+  </section>
+
+  <!-- STEP 4: Output -->
+  <section class="panel" id="outputPanel" style="display:none;">
+    <h2><span class="step-badge">4</span>Your draft</h2>
+    <p class="sub">Edit freely, then copy or download.</p>
+
+    <div id="subjectBox"></div>
+
+    <div class="tabbar">
+      <button class="active" data-tab="preview">Preview</button>
+      <button data-tab="markdown">Markdown</button>
+    </div>
+    <div id="previewTab" class="preview"></div>
+    <textarea id="rawMd" style="display:none;"></textarea>
+
+    <div class="action-bar">
+      <button class="btn btn-outline btn-sm" id="copyMdBtn">Copy Markdown</button>
+      <button class="btn btn-outline btn-sm" id="downloadMdBtn">Download .md</button>
+      <button class="btn btn-outline btn-sm" id="downloadHtmlBtn">Download .html</button>
+      <button class="btn btn-outline btn-sm" id="regenFramingBtn">Regenerate intro/outro</button>
+    </div>
+  </section>
+
+  <p class="footer-note">Runs entirely in your browser. Video pages are fetched through a public CORS relay since GitHub Pages can't call youtube.com directly — if a fetch fails, you can paste that video's transcript by hand.</p>
 </div>
 
 <script>
-    // Extract unique 11-character video ID from common URL formats
-    function extractVideoId(url) {
-        const pattern = /(?:v=|\/shorts\/|\/embed\/|\/v\/|youtu\.be\/|\/watch\?v=|\/watch\?.+&v=)([^#\&\?]{11})/;
-        const match = url.match(pattern);
-        return match ? match[1] : null;
+(function(){
+  "use strict";
+
+  /* ===================== State ===================== */
+  const state = {
+    inputMode: 'playlist',
+    rawPlaylistVideos: [],   // [{id,title,thumbnail,checked}]
+    videos: [],              // pipeline videos [{id,title,channel,duration,thumbnail,url,transcript,summary,status,error}]
+    draftMd: '',
+    subjectLines: [],
+    intro: '', outro: ''
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  /* ===================== Theme ===================== */
+  const root = document.documentElement;
+  function applyTheme(dark){
+    root.classList.toggle('dark', dark);
+    $('themeToggle').textContent = dark ? '☀' : '◐';
+    localStorage.setItem('nl_theme', dark ? 'dark' : 'light');
+  }
+  applyTheme(localStorage.getItem('nl_theme') === 'dark');
+  $('themeToggle').addEventListener('click', () => applyTheme(!root.classList.contains('dark')));
+
+  /* ===================== Remembered settings ===================== */
+  (function restore(){
+    const provider = localStorage.getItem('nl_provider');
+    if (provider) $('provider').value = provider;
+    const remembered = localStorage.getItem('nl_key_' + ($('provider').value));
+    if (remembered) { $('apiKey').value = remembered; $('rememberKey').checked = true; }
+  })();
+  function syncApiKeyField(){
+    const isNone = $('provider').value === 'none';
+    $('apiKeyField').style.display = isNone ? 'none' : 'block';
+    $('rememberKey').closest('.checkbox-row').style.display = isNone ? 'none' : 'flex';
+  }
+  $('provider').addEventListener('change', () => {
+    localStorage.setItem('nl_provider', $('provider').value);
+    const remembered = localStorage.getItem('nl_key_' + $('provider').value);
+    $('apiKey').value = remembered || '';
+    $('rememberKey').checked = !!remembered;
+    syncApiKeyField();
+  });
+  syncApiKeyField();
+  function persistKeyIfNeeded(){
+    const provider = $('provider').value;
+    if ($('rememberKey').checked) localStorage.setItem('nl_key_' + provider, $('apiKey').value);
+    else localStorage.removeItem('nl_key_' + provider);
+  }
+
+  /* ===================== Small helpers ===================== */
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function decodeEntities(text){
+    return text
+      .replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#x27;/g, "'")
+      .replace(/&apos;/g, "'").replace(/\n/g, " ");
+  }
+  function formatDuration(seconds){
+    seconds = parseInt(seconds, 10);
+    if (!seconds || isNaN(seconds)) return '';
+    const h = Math.floor(seconds/3600), m = Math.floor((seconds%3600)/60), s = seconds%60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  function extractVideoId(input){
+    input = input.trim();
+    let m = input.match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (m) return m[1];
+    m = input.match(/^([a-zA-Z0-9_-]{11})$/);
+    if (m) return m[1];
+    return null;
+  }
+  function extractPlaylistId(url){
+    const m = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+  }
+
+  /* ===================== CORS relay ===================== */
+  const PROXIES = [
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`
+  ];
+  async function fetchViaRelay(url){
+    let lastErr = null;
+    for (const build of PROXIES) {
+      try {
+        const res = await fetch(build(url));
+        if (!res.ok) { lastErr = new Error('Relay returned ' + res.status); continue; }
+        const text = await res.text();
+        if (!text || text.length < 30) { lastErr = new Error('Relay returned empty content'); continue; }
+        return text;
+      } catch (e) { lastErr = e; }
     }
+    throw lastErr || new Error('All CORS relays failed');
+  }
 
-    // Main controller function
-    async function processVideo() {
-        const apiKey = document.getElementById('apiKey').value.trim();
-        const videoUrl = document.getElementById('videoUrl').value.trim();
-        const statusDiv = document.getElementById('statusMessage');
-        const outputDiv = document.getElementById('output');
-        const btn = document.getElementById('submitBtn');
+  /* ===================== JSON extraction from HTML ===================== */
+  function parseBalancedJson(html, start){
+    let depth = 0, inStr = false, esc = false, i = start;
+    for (; i < html.length; i++) {
+      const ch = html[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === '{') depth++;
+      else if (ch === '}') { depth--; if (depth === 0) { i++; break; } }
+    }
+    try { return JSON.parse(html.slice(start, i)); } catch (e) { return null; }
+  }
+  function extractJsonNear(html, keyName){
+    const idx = html.indexOf(keyName);
+    if (idx === -1) return null;
+    const eq = html.indexOf('=', idx);
+    if (eq === -1) return null;
+    const brace = html.indexOf('{', eq);
+    if (brace === -1) return null;
+    return parseBalancedJson(html, brace);
+  }
+  function findFirstByKey(obj, key){
+    if (!obj || typeof obj !== 'object') return undefined;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) return obj[key];
+    for (const k in obj) {
+      const v = obj[k];
+      if (v && typeof v === 'object') {
+        const found = findFirstByKey(v, key);
+        if (found !== undefined) return found;
+      }
+    }
+    return undefined;
+  }
+  function findAllByKey(obj, key, out){
+    out = out || [];
+    if (!obj || typeof obj !== 'object') return out;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) out.push(obj[key]);
+    for (const k in obj) {
+      const v = obj[k];
+      if (v && typeof v === 'object') findAllByKey(v, key, out);
+    }
+    return out;
+  }
 
-        if (!apiKey || !videoUrl) {
-            alert('Please fill out both the API Key and the Video URL fields.');
-            return;
+  /* ===================== Playlist parsing ===================== */
+  async function loadPlaylistVideos(playlistUrl){
+    const playlistId = extractPlaylistId(playlistUrl);
+    if (!playlistId) throw new Error('That doesn\u2019t look like a playlist URL (missing ?list=...).');
+    const html = await fetchViaRelay(`https://www.youtube.com/playlist?list=${playlistId}`);
+    const data = extractJsonNear(html, 'ytInitialData');
+    let out = [];
+    if (data) {
+      const renderers = findAllByKey(data, 'playlistVideoRenderer');
+      const seen = new Set();
+      for (const r of renderers) {
+        if (!r || !r.videoId || seen.has(r.videoId)) continue;
+        seen.add(r.videoId);
+        let title = '';
+        if (r.title && Array.isArray(r.title.runs)) title = r.title.runs.map(x => x.text).join('');
+        else if (r.title && r.title.simpleText) title = r.title.simpleText;
+        out.push({
+          id: r.videoId,
+          title: title || 'Untitled video',
+          thumbnail: `https://i.ytimg.com/vi/${r.videoId}/hqdefault.jpg`
+        });
+      }
+    }
+    if (out.length === 0) {
+      // Fallback: regex scan for bare video ids
+      const seen = new Set();
+      const matches = Array.from(html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g));
+      for (const m of matches) {
+        if (!seen.has(m[1]) && out.length < 40) {
+          seen.add(m[1]);
+          out.push({ id: m[1], title: 'Untitled video', thumbnail: `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` });
         }
+      }
+    }
+    if (out.length === 0) throw new Error('No videos found — the playlist may be private, empty, or the relay returned a blocked page.');
+    return out;
+  }
 
-        const videoId = extractVideoId(videoUrl);
-        if (!videoId) {
-            alert('Invalid YouTube URL format.');
-            return;
-        }
-
-        // UI Reset and Loading state
-        statusDiv.style.display = 'block';
-        outputDiv.style.display = 'none';
-        btn.disabled = true;
-        
+  /* ===================== Watch page + transcript ===================== */
+  function rankTrack(t){
+    const lang = (t.languageCode || '').toLowerCase();
+    const isAuto = (t.kind || '') === 'asr' || lang.startsWith('a.');
+    const isEnglish = lang === 'en' || lang.startsWith('en');
+    if (isEnglish && !isAuto) return 0;
+    if (isEnglish && isAuto) return 1;
+    if (!isAuto) return 2;
+    return 3;
+  }
+  async function fetchVideoPage(videoId){
+    const html = await fetchViaRelay(`https://www.youtube.com/watch?v=${videoId}`);
+    const playerResponse = extractJsonNear(html, 'ytInitialPlayerResponse');
+    const videoDetails = (playerResponse && findFirstByKey(playerResponse, 'videoDetails')) || {};
+    let title = videoDetails.title;
+    if (!title) {
+      const m = html.match(/<meta property="og:title" content="([^"]*)"/);
+      title = m ? decodeEntities(m[1]) : 'Untitled video';
+    }
+    const channel = videoDetails.author || '';
+    const duration = formatDuration(videoDetails.lengthSeconds);
+    const captionTracksArrays = playerResponse ? findAllByKey(playerResponse, 'captionTracks') : [];
+    const captionTracks = (captionTracksArrays[0] || []).filter(t => t && t.baseUrl);
+    return { title: decodeEntities(title), channel: decodeEntities(channel), duration, captionTracks };
+  }
+  async function fetchTranscriptText(captionTracks){
+    if (!captionTracks || captionTracks.length === 0) return '';
+    const sorted = [...captionTracks].sort((a,b) => rankTrack(a) - rankTrack(b));
+    for (const track of sorted) {
+      try {
+        const json3 = await fetchViaRelay(track.baseUrl + '&fmt=json3');
         try {
-            // 1. Fetch transcript using an open-source caption scraper API
-            statusDiv.innerText = 'Fetching video transcript...';
-            const transcriptResponse = await fetch(`https://vercel.app{videoId}`);
-            
-            if (!transcriptResponse.ok) {
-                throw new Error('Failed to retrieve captions. Ensure the video has subtitles enabled.');
-            }
-            
-            const transcriptData = await transcriptResponse.json();
-            // Combine the separate text chunks into a unified string block
-            const fullTranscript = transcriptData.map(item => item.text).join(' ');
-
-            // 2. Transmit transcript to OpenAI API for extraction
-            statusDiv.innerText = 'Analyzing content with AI...';
-            const openaiResponse = await fetch('https://openai.com', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini', // Cost-effective, high-speed model optimized for web inputs
-                    messages: [
-                        {
-                            role: 'system',
-                            content: 'You are an elite video summary tool. Extract the core arguments, tools, resources, and actionable strategies from this transcript into clean text notes.'
-                        },
-                        {
-                            role: 'user',
-                            content: `Summarize this text:\n\n${fullTranscript}`
-                        }
-                    ],
-                    temperature: 0.3
-                })
-            });
-
-            if (!openaiResponse.ok) {
-                const errData = await openaiResponse.json();
-                throw new Error(errData.error?.message || 'OpenAI API Error');
-            }
-
-            const aiData = await openaiResponse.json();
-            const summaryText = aiData.choices[0].message.content;
-
-            // 3. Render Output
-            statusDiv.innerText = 'Done!';
-            outputDiv.innerText = summaryText;
-            outputDiv.style.display = 'block';
-
-        } catch (error) {
-            statusDiv.innerText = 'An error occurred.';
-            alert(error.message);
-        } finally {
-            btn.disabled = false;
-        }
+          const parsed = JSON.parse(json3);
+          const events = parsed.events || [];
+          const text = events.flatMap(e => (e.segs||[]).map(s => s.utf8||'')).join(' ').replace(/\s+/g,' ').trim();
+          if (text.length > 20) return decodeEntities(text);
+        } catch(e) { /* not json, try xml below */ }
+        const chunks = Array.from(json3.matchAll(/<text[^>]*>([^<]*)<\/text>/g)).map(m => decodeEntities(m[1]));
+        const text2 = chunks.join(' ').replace(/\s+/g,' ').trim();
+        if (text2.length > 20) return text2;
+      } catch (e) { /* try next track */ }
     }
-</script>
+    return '';
+  }
 
+  /* ===================== Built-in extractive summarizer (no API key needed) ===================== */
+  const STOP_WORDS = new Set([
+    "a","about","above","after","again","all","also","am","an","and","any","are","as","at",
+    "be","because","been","before","being","between","both","but","by","can","did","do",
+    "does","doing","during","each","for","from","further","get","got","had","has","have",
+    "having","he","her","here","him","his","how","i","if","in","into","is","it","its",
+    "just","know","let","like","me","more","most","my","no","not","now","of","off","on",
+    "once","only","or","other","our","out","over","own","re","said","same","she","should",
+    "so","some","such","than","that","the","their","them","then","there","these","they",
+    "this","those","through","to","too","under","until","up","very","was","we","were",
+    "what","when","where","which","while","who","will","with","would","you","your",
+    "uh","um","yeah","okay","ok","gonna","gotta","wanna","kinda","sorta","actually",
+    "basically","literally","really","right","mean","think","know","going","want","need",
+    "see","look","take","make","come","thing","things","something","anything","everything",
+    "lot","bit","kind","sort","way","time","day","year","new","good","great","different",
+    "number","use","used","using","talk","talking","say","tell","put","give","got",
+    "able","much","together","loop","complex","simple","fast","faster","better",
+    "whole","every","full","hard","easy","large","small","long","short","high","low",
+    "old","left","next","last","first","second","third","already","still","even",
+    "back","well","never","always","often","maybe","perhaps","quite","rather",
+    "enough","almost","nearly","exactly","simply","clearly","quickly","slowly","however",
+    "therefore","thus","hence","indeed","instead","meanwhile","although","though","unless",
+    "imagine","work","help","show","start","point","open","bring","build","built",
+    "understand","collapse","achieve","manage","deploy","create","develop","produce",
+    "around","across","along","within","without","inside","outside",
+    "real","happening","products","happen","comes","coming","getting","putting",
+    "having","making","doing","saying","telling","showing","giving","taking",
+    "place","case","fact","part","hand","side","line","step","level","area",
+    "people","person","team","group","world","life","idea","sense","ways","needs",
+    "fully","designed","allow","allows","allowed","uses",
+    "become","becomes","became","include","includes","included","needed",
+    "called","known","found","based","related","given","seen","done","made",
+    "accurately","efficiently","effectively","significantly","specifically","particularly",
+    "currently","recently","previously","generally","typically","essentially","primarily",
+    "directly","easily","completely","immediately","constantly"
+  ]);
+  function tokenize(text){
+    return text.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w => w.length > 3 && !STOP_WORDS.has(w));
+  }
+  function extractTopKeywords(text, n){
+    const freq = {};
+    for (const w of tokenize(text)) freq[w] = (freq[w]||0)+1;
+    return Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([w])=>w);
+  }
+  function extractBigrams(text, maxCount){
+    const words = tokenize(text);
+    const freq = {};
+    for (let i=0;i<words.length-1;i++){ const bg = words[i]+' '+words[i+1]; freq[bg]=(freq[bg]||0)+1; }
+    return Object.entries(freq).filter(([,c])=>c>1).sort((a,b)=>b[1]-a[1]).slice(0,maxCount).map(([p])=>p);
+  }
+  function titleCase(str){ return str.replace(/\b\w/g, c => c.toUpperCase()); }
+  function joinList(items){
+    if (items.length===0) return '';
+    if (items.length===1) return items[0];
+    if (items.length===2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0,-1).join(', ')}, and ${items[items.length-1]}`;
+  }
+  function extractiveSummarize(transcript, videoTitle){
+    const text = transcript.slice(0, 15000);
+    const keywords = extractTopKeywords(text, 20);
+    const bigrams = extractBigrams(text, 5);
+    if (keywords.length === 0) {
+      return `This video, titled "${videoTitle}", presents a discussion by the speaker on various topics covered throughout the content.`;
+    }
+    const primaryTopics = (bigrams.length > 0 ? bigrams.slice(0,3) : keywords.slice(0,3)).map(titleCase);
+    const usedWords = new Set(bigrams.flatMap(b => b.split(' ')));
+    const secondaryKeywords = keywords.filter(k => !usedWords.has(k)).slice(0,5).map(titleCase);
+    const thirdSet = keywords.filter(k => !usedWords.has(k)).slice(5,9).map(titleCase);
+    let summary = `In this video, the presenter explores ${joinList(primaryTopics)}`;
+    if (secondaryKeywords.length > 0) summary += `, alongside key concepts such as ${joinList(secondaryKeywords)}`;
+    summary += '.';
+    if (thirdSet.length > 0) summary += ` The discussion also touches on ${joinList(thirdSet)}, providing viewers with a broad understanding of the subject matter covered throughout the video.`;
+    else summary += ` The content provides viewers with a detailed look at these topics and their practical significance.`;
+    return summary;
+  }
+  function extractiveFraming(meta, videos){
+    const names = videos.map(v => v.title);
+    return {
+      subjectLines: [
+        `${meta.name}: ${names[0] || 'this issue'}${names.length > 1 ? ' + more' : ''}`,
+        `${videos.length} video${videos.length===1?'':'s'} worth your time this issue`,
+        `${meta.name} \u2014 new issue is up`
+      ],
+      intro: `This issue rounds up ${videos.length} video${videos.length===1?'':'s'} covering ${joinList(names.slice(0,3).map(n => `"${n}"`))}${names.length>3 ? ', and more' : ''}. Here\u2019s a quick look at each one.`,
+      outro: `That\u2019s the lineup for this issue \u2014 see you in the next one.`
+    };
+  }
+
+  /* ===================== AI calls ===================== */
+  async function callAI(systemPrompt, userPrompt, maxTokens){
+    const provider = $('provider').value;
+    const apiKey = $('apiKey').value.trim();
+    if (!apiKey) throw new Error('Add your ' + (provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' API key in step 1.');
+    if (provider === 'gemini') {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.45 }
+        })
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(()=> '');
+        throw new Error('Gemini error (' + res.status + '): ' + errText.slice(0,200));
+      }
+      const data = await res.json();
+      const parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+      const text = parts ? parts.map(p => p.text || '').join('') : '';
+      if (!text.trim()) throw new Error('Gemini returned an empty response — the transcript may have tripped a safety filter.');
+      return text.trim();
+    } else {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+          temperature: 0.45,
+          max_tokens: maxTokens
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err.error && err.error.message) || ('OpenAI error ' + res.status));
+      }
+      const data = await res.json();
+      const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (!text) throw new Error('OpenAI returned an empty response.');
+      return text.trim();
+    }
+  }
+
+  function lengthInstruction(length){
+    if (length === 'brief') return 'Write exactly one tight paragraph, about 45-70 words.';
+    if (length === 'detailed') return 'Write three to four short paragraphs, about 200-280 words total, covering the video\u2019s main sections in order.';
+    return 'Write two short paragraphs, about 100-150 words total.';
+  }
+
+  async function summarizeVideo(video, summaryLength){
+    if ($('provider').value === 'none') {
+      return extractiveSummarize(video.transcript, video.title);
+    }
+    const system = 'You are an expert content summarizer who writes concise, factual video write-ups for a newsletter editor. You never copy or closely paraphrase the transcript \u2014 you describe it in fresh language, in third person, as an outside observer. No bullet points, no markdown, no headers, no first person.';
+    const user = `Video title: ${video.title}
+Channel: ${video.channel || 'Unknown'}
+
+${lengthInstruction(summaryLength)} Focus on the concrete takeaways, tools, and ideas a reader would want to know about \u2014 skip filler, sponsor reads, and small talk.
+
+Transcript:
+${video.transcript.slice(0, 15000)}
+
+Write the write-up now, in third person, in your own words:`;
+    return callAI(system, user, 900);
+  }
+
+  async function generateFraming(meta, videos){
+    if ($('provider').value === 'none') {
+      return extractiveFraming(meta, videos);
+    }
+    const system = 'You are a newsletter editor known for punchy, personable writing. You write ONLY the framing copy you are asked for \u2014 never the video write-ups themselves, since those already exist and are supplied to you. Return ONLY valid JSON, no markdown code fences, no commentary before or after.';
+    const list = videos.map((v,i) => `${i+1}. "${v.title}" (${v.channel || 'unknown channel'}) \u2014 ${v.summary.slice(0,160)}`).join('\n');
+    const user = `Newsletter name: ${meta.name}
+Editorial voice: ${meta.voice}
+${meta.customNote ? 'A note to weave in naturally: ' + meta.customNote : ''}
+
+Videos in this issue:
+${list}
+
+Return a JSON object with exactly these keys:
+{"subjectLines": [three short, punchy email subject line options, no quotes around them], "intro": "a 2-4 sentence intro paragraph that ties the videos together thematically, in the editorial voice above, ending in a way that leads into the list below", "outro": "a 1-2 sentence warm closing line, in the same voice"}
+
+Do not restate every video title in the intro \u2014 just set the theme and tone. Output raw JSON only.`;
+    const raw = await callAI(system, user, 700);
+    return parseFramingJson(raw);
+  }
+  function parseFramingJson(raw){
+    let cleaned = raw.trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      return {
+        subjectLines: Array.isArray(parsed.subjectLines) ? parsed.subjectLines.slice(0,3) : [],
+        intro: parsed.intro || '',
+        outro: parsed.outro || ''
+      };
+    } catch (e) {
+      return { subjectLines: [], intro: cleaned, outro: '' };
+    }
+  }
+
+  /* ===================== Markdown (lite) renderer ===================== */
+  function mdToHtml(md){
+    const inline = (s) => {
+      s = escapeHtml(s);
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1<em>$2</em>');
+      return s;
+    };
+    const lines = md.split('\n');
+    let html = '', para = [];
+    const flush = () => { if (para.length) { html += `<p>${inline(para.join(' '))}</p>`; para = []; } };
+    for (const line of lines) {
+      const t = line.trim();
+      if (t === '') { flush(); continue; }
+      if (t === '---') { flush(); html += '<hr>'; continue; }
+      let m;
+      if ((m = t.match(/^###\s+(.*)/))) { flush(); html += `<h3>${inline(m[1])}</h3>`; continue; }
+      if ((m = t.match(/^##\s+(.*)/))) { flush(); html += `<h2>${inline(m[1])}</h2>`; continue; }
+      if ((m = t.match(/^#\s+(.*)/))) { flush(); html += `<h1>${inline(m[1])}</h1>`; continue; }
+      para.push(t);
+    }
+    flush();
+    return html;
+  }
+
+  /* ===================== Logging ===================== */
+  function log(msg, cls){
+    const panel = $('logPanel');
+    panel.style.display = 'block';
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.textContent = msg;
+    panel.appendChild(div);
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  /* ===================== Summary length switch ===================== */
+  let summaryLengthValue = 'brief';
+  $('summaryLengthSwitch').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-length]');
+    if (!btn) return;
+    summaryLengthValue = btn.dataset.length;
+    document.querySelectorAll('#summaryLengthSwitch button').forEach(b => b.classList.toggle('active', b === btn));
+  });
+
+  /* ===================== Input mode switching ===================== */
+  $('inputModeSwitch').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    state.inputMode = btn.dataset.mode;
+    document.querySelectorAll('#inputModeSwitch button').forEach(b => b.classList.toggle('active', b === btn));
+    $('playlistMode').style.display = state.inputMode === 'playlist' ? 'block' : 'none';
+    $('pasteMode').style.display = state.inputMode === 'paste' ? 'block' : 'none';
+  });
+
+  /* ===================== Load playlist ===================== */
+  $('loadPlaylistBtn').addEventListener('click', async () => {
+    const url = $('playlistUrl').value.trim();
+    const statusEl = $('playlistLoadStatus');
+    const listEl = $('playlistCheckboxList');
+    statusEl.innerHTML = '';
+    listEl.innerHTML = '';
+    if (!url) { statusEl.innerHTML = '<div class="error-msg">Paste a playlist URL first.</div>'; return; }
+    $('loadPlaylistBtn').disabled = true;
+    $('loadPlaylistBtn').textContent = 'Loading\u2026';
+    try {
+      const videos = await loadPlaylistVideos(url);
+      state.rawPlaylistVideos = videos.map(v => ({ ...v, checked: true }));
+      renderPlaylistCheckboxes();
+      statusEl.innerHTML = `<div class="info-msg">Found ${videos.length} video${videos.length===1?'':'s'}. Untick any you don\u2019t want, then generate below.</div>`;
+    } catch (e) {
+      statusEl.innerHTML = `<div class="error-msg">${escapeHtml(e.message)}</div>`;
+    } finally {
+      $('loadPlaylistBtn').disabled = false;
+      $('loadPlaylistBtn').textContent = 'Load videos';
+    }
+  });
+  function renderPlaylistCheckboxes(){
+    const listEl = $('playlistCheckboxList');
+    listEl.innerHTML = state.rawPlaylistVideos.map((v, i) => `
+      <div class="ticket">
+        <div class="ticket-check"><input type="checkbox" data-idx="${i}" ${v.checked ? 'checked' : ''}></div>
+        <img class="ticket-thumb" src="${v.thumbnail}" loading="lazy" alt="">
+        <div class="ticket-body"><div class="ticket-title">${escapeHtml(v.title)}</div></div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => { state.rawPlaylistVideos[cb.dataset.idx].checked = cb.checked; });
+    });
+  }
+
+  /* ===================== Build selection ===================== */
+  function buildSelectedVideos(){
+    const max = Math.max(1, parseInt($('maxVideos').value, 10) || 10);
+    let selected = [];
+    if (state.inputMode === 'playlist') {
+      selected = state.rawPlaylistVideos.filter(v => v.checked)
+        .map(v => ({ id: v.id, title: v.title, thumbnail: v.thumbnail }));
+    } else {
+      const lines = $('pasteUrls').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const seen = new Set();
+      for (const line of lines) {
+        const id = extractVideoId(line);
+        if (id && !seen.has(id)) { seen.add(id); selected.push({ id, title: 'Untitled video', thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` }); }
+      }
+    }
+    return selected.slice(0, max);
+  }
+
+  /* ===================== Pipeline rendering ===================== */
+  function renderPipelineList(){
+    const el = $('pipelineList');
+    el.innerHTML = state.videos.map((v, i) => {
+      const statusClass = { queued:'st-queued', working:'st-working', done:'st-done', error:'st-error', skipped:'st-skipped' }[v.status] || 'st-queued';
+      const statusLabel = { queued:'Queued', working:v.stage || 'Working\u2026', done:'Done', error:'Error', skipped:'Skipped' }[v.status] || 'Queued';
+      return `
+      <div class="ticket" id="ticket-${i}">
+        <img class="ticket-thumb" src="${v.thumbnail}" loading="lazy" alt="">
+        <div class="ticket-body">
+          <div class="ticket-title">${escapeHtml(v.title)}</div>
+          <div class="ticket-meta">${escapeHtml(v.channel || '')}${v.duration ? ' \u2022 ' + v.duration : ''}</div>
+        </div>
+        <span class="ticket-status ${statusClass}">${escapeHtml(statusLabel)}</span>
+      </div>
+      <div id="fallback-${i}"></div>
+      `;
+    }).join('');
+  }
+  function updateProgress(done, total){
+    $('progressBar').style.display = 'block';
+    $('progressFill').style.width = Math.round((done/total)*100) + '%';
+  }
+
+  function showManualFallback(i){
+    return new Promise((resolve) => {
+      const holder = $('fallback-' + i);
+      holder.innerHTML = `
+        <div class="paste-fallback">
+          <div class="hint">Couldn\u2019t pull a transcript automatically for this one. Open the video, click the \u201c\u2026\u201d under it \u2192 Show transcript, copy the text, and paste it here \u2014 or skip it.</div>
+          <textarea id="pasteArea-${i}" placeholder="Paste transcript text here (at least 50 characters)"></textarea>
+          <div class="row">
+            <button class="btn btn-primary btn-sm" id="useBtn-${i}">Use this transcript</button>
+            <button class="btn btn-outline btn-sm" id="skipBtn-${i}">Skip this video</button>
+          </div>
+        </div>
+      `;
+      $('useBtn-' + i).addEventListener('click', () => {
+        const text = $('pasteArea-' + i).value.trim();
+        if (text.length < 50) { alert('Please paste at least 50 characters of transcript.'); return; }
+        holder.innerHTML = '';
+        resolve(text);
+      });
+      $('skipBtn-' + i).addEventListener('click', () => {
+        holder.innerHTML = '';
+        resolve(null);
+      });
+    });
+  }
+
+  async function runPipeline(){
+    const summaryLength = summaryLengthValue;
+    state.videos = buildSelectedVideos().map(v => ({
+      ...v, channel:'', duration:'', url:`https://www.youtube.com/watch?v=${v.id}`,
+      transcript:'', summary:'', status:'queued'
+    }));
+    if (state.videos.length === 0) {
+      log('No videos selected. Load a playlist or paste some links first.', 'bad');
+      return;
+    }
+    renderPipelineList();
+    $('logPanel').innerHTML = '';
+    updateProgress(0, state.videos.length);
+
+    for (let i = 0; i < state.videos.length; i++) {
+      const v = state.videos[i];
+      const ticket = () => $('ticket-' + i);
+      function setStage(stage){ v.status = 'working'; v.stage = stage; renderPipelineList(); }
+
+      try {
+        setStage('Fetching video\u2026');
+        log(`Fetching ${v.title !== 'Untitled video' ? v.title : v.id}\u2026`);
+        const info = await fetchVideoPage(v.id);
+        v.title = info.title || v.title;
+        v.channel = info.channel;
+        v.duration = info.duration;
+
+        setStage('Getting transcript\u2026');
+        let transcript = await fetchTranscriptText(info.captionTracks);
+
+        if (!transcript) {
+          renderPipelineList();
+          log(`No captions found for "${v.title}" \u2014 paste it manually or skip.`, 'bad');
+          transcript = await showManualFallback(i);
+        }
+
+        if (!transcript) {
+          v.status = 'skipped';
+          log(`Skipped "${v.title}".`);
+          renderPipelineList();
+          updateProgress(i+1, state.videos.length);
+          continue;
+        }
+
+        v.transcript = transcript;
+        setStage('Summarizing\u2026');
+        v.summary = await summarizeVideo(v, summaryLength);
+        v.status = 'done';
+        log(`Done: ${v.title}`, 'ok');
+      } catch (e) {
+        v.status = 'error';
+        v.error = e.message;
+        log(`Error on "${v.title}": ${e.message}`, 'bad');
+      }
+      renderPipelineList();
+      updateProgress(i+1, state.videos.length);
+      await sleep(250);
+    }
+
+    const successVideos = state.videos.filter(v => v.status === 'done');
+    if (successVideos.length === 0) {
+      log('No videos made it through \u2014 nothing to draft yet.', 'bad');
+      return;
+    }
+
+    log('Writing intro, outro, and subject lines\u2026');
+    await composeNewsletter(successVideos);
+  }
+
+  async function composeNewsletter(successVideos){
+    const meta = {
+      name: $('newsletterName').value.trim() || 'This Week\u2019s Watchlist',
+      voice: $('voice').value.trim() || 'clear and friendly',
+      customNote: $('customNote').value.trim()
+    };
+    try {
+      const framing = await generateFraming(meta, successVideos);
+      state.subjectLines = framing.subjectLines;
+      state.intro = framing.intro;
+      state.outro = framing.outro;
+    } catch (e) {
+      log('Framing step failed (' + e.message + ') \u2014 using a simple fallback intro.', 'bad');
+      state.subjectLines = [meta.name];
+      state.intro = `Here\u2019s what\u2019s worth your time this issue.`;
+      state.outro = `That\u2019s the lineup \u2014 see you next time.`;
+    }
+    assembleDraft(meta, successVideos);
+    log('Draft ready.', 'ok');
+    $('startOverBtn').style.display = 'inline-flex';
+  }
+
+  function assembleDraft(meta, videos){
+    let md = `# ${meta.name}\n\n${state.intro}\n\n`;
+    videos.forEach((v, i) => {
+      md += `## ${i+1}. ${v.title}\n`;
+      md += `*${v.channel || 'YouTube'}${v.duration ? ' \u2022 ' + v.duration : ''}*\n\n`;
+      md += `${v.summary}\n\n`;
+      md += `[Watch on YouTube \u2192](${v.url})\n\n`;
+      md += `---\n\n`;
+    });
+    md += `${state.outro}\n`;
+    const ctaText = $('ctaText').value.trim();
+    const ctaUrl = $('ctaUrl').value.trim();
+    if (ctaText && ctaUrl) md += `\n[${ctaText}](${ctaUrl})\n`;
+    state.draftMd = md;
+
+    $('subjectBox').innerHTML = state.subjectLines.length ? `
+      <label style="margin-bottom:8px;">Subject line ideas</label>
+      <div class="subject-list">
+        ${state.subjectLines.map(s => `
+          <div class="subject-chip"><span>${escapeHtml(s)}</span>
+            <button class="btn btn-ghost btn-sm copy-subject" data-text="${escapeHtml(s)}">Copy</button>
+          </div>`).join('')}
+      </div>` : '';
+    $('subjectBox').querySelectorAll('.copy-subject').forEach(btn => {
+      btn.addEventListener('click', () => navigator.clipboard.writeText(btn.dataset.text));
+    });
+
+    $('rawMd').value = state.draftMd;
+    $('previewTab').innerHTML = mdToHtml(state.draftMd);
+    $('outputPanel').style.display = 'block';
+    $('outputPanel').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  /* ===================== Output tab switching ===================== */
+  document.querySelector('.tabbar').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+    document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b === btn));
+    const isPreview = btn.dataset.tab === 'preview';
+    $('previewTab').style.display = isPreview ? 'block' : 'none';
+    $('rawMd').style.display = isPreview ? 'none' : 'block';
+    if (!isPreview) $('rawMd').value = state.draftMd;
+  });
+  $('rawMd').addEventListener('input', () => {
+    state.draftMd = $('rawMd').value;
+    $('previewTab').innerHTML = mdToHtml(state.draftMd);
+  });
+
+  /* ===================== Action buttons ===================== */
+  function download(filename, content, mime){
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  }
+  $('copyMdBtn').addEventListener('click', () => navigator.clipboard.writeText(state.draftMd));
+  $('downloadMdBtn').addEventListener('click', () => download('newsletter.md', state.draftMd, 'text/markdown'));
+  $('downloadHtmlBtn').addEventListener('click', () => {
+    const body = mdToHtml(state.draftMd);
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml($('newsletterName').value)}</title>
+    <style>body{font-family:Georgia,serif;max-width:640px;margin:40px auto;padding:0 20px;color:#1C1B1F;line-height:1.6;}
+    h1{font-size:26px;} h2{font-size:19px;margin-top:28px;} em{font-family:monospace;font-style:normal;color:#615C4E;font-size:12px;}
+    a{color:#0F6B5C;} hr{border:none;border-top:1px solid #E3DCC8;margin:20px 0;}</style></head><body>${body}</body></html>`;
+    download('newsletter.html', html, 'text/html');
+  });
+  $('regenFramingBtn').addEventListener('click', async () => {
+    const successVideos = state.videos.filter(v => v.status === 'done');
+    if (successVideos.length === 0) return;
+    log('Regenerating intro/outro/subject lines\u2026');
+    await composeNewsletter(successVideos);
+  });
+
+  $('generateBtn').addEventListener('click', () => {
+    persistKeyIfNeeded();
+    $('generateBtn').disabled = true;
+    runPipeline().finally(() => { $('generateBtn').disabled = false; });
+  });
+  $('startOverBtn').addEventListener('click', () => {
+    state.videos = [];
+    $('pipelineList').innerHTML = '';
+    $('logPanel').innerHTML = ''; $('logPanel').style.display = 'none';
+    $('progressBar').style.display = 'none'; $('progressFill').style.width = '0%';
+    $('outputPanel').style.display = 'none';
+    $('startOverBtn').style.display = 'none';
+  });
+
+})();
+</script>
 </body>
 </html>
