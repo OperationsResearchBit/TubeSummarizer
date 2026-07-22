@@ -491,10 +491,6 @@ async function fetchViaRelay(url, attempt = 0){
   throw lastErr || new Error('All CORS relays failed or are currently rate-limited');
 }
 
-const html = await fetchViaRelay(`https://www.youtube.com/playlist?list=${playlistId}&gl=US&hl=en`);
-...
-const html = await fetchViaRelay(`https://www.youtube.com/watch?v=${videoId}&gl=US&hl=en`);
-
   /* ===================== JSON extraction from HTML ===================== */
   function parseBalancedJson(html, start){
     let depth = 0, inStr = false, esc = false, i = start;
