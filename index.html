@@ -473,9 +473,13 @@ async function fetchViaRelay(url, attempt = 0){
     try {
       const res = await fetch(PROXIES[p](url));
       if (res.status === 429) {
-        proxyCooldownUntil[p] = Date.now() + 60000; // back this one off for a minute
+        proxyCooldownUntil[p] = Date.now() + 60000;
         lastErr = new Error('Relay rate-limited (429)');
         continue;
+      }
+      if (res.status === 413) {
+        lastErr = new Error('Relay rejected — response too large (413)');
+        continue; // don't cool this proxy down permanently, just skip it for this URL
       }
       if (!res.ok) { lastErr = new Error('Relay returned ' + res.status); continue; }
       const text = await res.text();
