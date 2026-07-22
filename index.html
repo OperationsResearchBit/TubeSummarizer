@@ -454,24 +454,46 @@ https://youtu.be/...."></textarea>
   }
 
   /* ===================== CORS relay ===================== */
-  const PROXIES = [
-    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-    (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`
-  ];
-  async function fetchViaRelay(url){
-    let lastErr = null;
-    for (const build of PROXIES) {
-      try {
-        const res = await fetch(build(url));
-        if (!res.ok) { lastErr = new Error('Relay returned ' + res.status); continue; }
-        const text = await res.text();
-        if (!text || text.length < 30) { lastErr = new Error('Relay returned empty content'); continue; }
-        return text;
-      } catch (e) { lastErr = e; }
-    }
-    throw lastErr || new Error('All CORS relays failed');
+ const PROXIES = [
+  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`
+];
+const proxyCooldownUntil = [0, 0, 0];
+let lastRelayCallAt = 0;
+const MIN_RELAY_GAP_MS = 500; // spread calls out so free proxies don't rate-limit us
+
+async function fetchViaRelay(url, attempt = 0){
+  let lastErr = null;
+  for (let p = 0; p < PROXIES.length; p++) {
+    if (Date.now() < proxyCooldownUntil[p]) continue; // this proxy is cooling down, skip it
+    const wait = MIN_RELAY_GAP_MS - (Date.now() - lastRelayCallAt);
+    if (wait > 0) await sleep(wait);
+    lastRelayCallAt = Date.now();
+    try {
+      const res = await fetch(PROXIES[p](url));
+      if (res.status === 429) {
+        proxyCooldownUntil[p] = Date.now() + 60000; // back this one off for a minute
+        lastErr = new Error('Relay rate-limited (429)');
+        continue;
+      }
+      if (!res.ok) { lastErr = new Error('Relay returned ' + res.status); continue; }
+      const text = await res.text();
+      if (!text || text.length < 30) { lastErr = new Error('Relay returned empty content'); continue; }
+      if (/consent\.youtube\.com|Before you continue to YouTube/i.test(text)) {
+        lastErr = new Error('Relay hit a YouTube consent wall');
+        continue;
+      }
+      return text;
+    } catch (e) { lastErr = e; }
   }
+  if (attempt < 2) { await sleep(1500 * (attempt + 1)); return fetchViaRelay(url, attempt + 1); }
+  throw lastErr || new Error('All CORS relays failed or are currently rate-limited');
+}
+
+const html = await fetchViaRelay(`https://www.youtube.com/playlist?list=${playlistId}&gl=US&hl=en`);
+...
+const html = await fetchViaRelay(`https://www.youtube.com/watch?v=${videoId}&gl=US&hl=en`);
 
   /* ===================== JSON extraction from HTML ===================== */
   function parseBalancedJson(html, start){
@@ -526,7 +548,7 @@ https://youtu.be/...."></textarea>
   async function loadPlaylistVideos(playlistUrl){
     const playlistId = extractPlaylistId(playlistUrl);
     if (!playlistId) throw new Error('That doesn\u2019t look like a playlist URL (missing ?list=...).');
-    const html = await fetchViaRelay(`https://www.youtube.com/playlist?list=${playlistId}`);
+    const html = await fetchViaRelay(`https://www.youtube.com/playlist?list=${playlistId}&gl=US&hl=en`);
     const data = extractJsonNear(html, 'ytInitialData');
     let out = [];
     if (data) {
@@ -571,7 +593,7 @@ https://youtu.be/...."></textarea>
     return 3;
   }
   async function fetchVideoPage(videoId){
-    const html = await fetchViaRelay(`https://www.youtube.com/watch?v=${videoId}`);
+    const html = await fetchViaRelay(`https://www.youtube.com/watch?v=${videoId}&gl=US&hl=en`);
     const playerResponse = extractJsonNear(html, 'ytInitialPlayerResponse');
     const videoDetails = (playerResponse && findFirstByKey(playerResponse, 'videoDetails')) || {};
     let title = videoDetails.title;
