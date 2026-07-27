@@ -14,7 +14,7 @@ to do: </br>
 
 use this script in console of your youtube playlist to get video IDs  
 
-'''(function() {
+ ```(function() {
     const videoElements = document.querySelectorAll('a#video-title, a#video-title-link, a[href*="/watch?v="]');
     const videoIds = new Set();
 
@@ -32,7 +32,7 @@ use this script in console of your youtube playlist to get video IDs
     console.log("--- Extracted YouTube Video IDs ---");
     console.log(Array.from(videoIds).join('\n'));
     console.log(`Total Unique Videos Found: ${videoIds.size}`);
-})();'''
+})(); ```
 
 ## Setup v1
 
