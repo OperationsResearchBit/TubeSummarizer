@@ -10,8 +10,33 @@ https://substack.com/@operationsresearchbit
 to do: </br> 
 - remove the api key and use regular summarizer 
 
+---
 
-## Setup 
+use this script in console of your youtube playlist to get video IDs  
+
+'''
+(function() {
+    const videoElements = document.querySelectorAll('a#video-title, a#video-title-link, a[href*="/watch?v="]');
+    const videoIds = new Set();
+
+    videoElements.forEach(el => {
+        const href = el.getAttribute('href');
+        if (href) {
+            const urlParams = new URLSearchParams(href.split('?')[1]);
+            const id = urlParams.get('v');
+            if (id && id.length === 11) {
+                videoIds.add(id);
+            }
+        }
+    });
+
+    console.log("--- Extracted YouTube Video IDs ---");
+    console.log(Array.from(videoIds).join('\n'));
+    console.log(`Total Unique Videos Found: ${videoIds.size}`);
+})();
+'''
+
+## Setup v1
 
 Pick Gemini or OpenAI, paste your own API key (stored only in your browser via localStorage if you check "remember"), set your newsletter's name/voice/CTA
 
