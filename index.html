@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playlist Transcript Summarizer</title>
+  <style>
+    :root {
+      --bg: #f4f4f9;
+      --card: #fff;
+      --primary: #2563eb;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+    body {
+      font-family: system-ui, Segoe UI, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .shell {
+      background: var(--card);
+      padding: 28px;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    h1 { margin: 0 0 10px; font-size: 24px; }
+    p { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      letter-spacing: .5px;
+    }
+    textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      font-size: 14px;
+      margin-bottom: 14px;
+      font-family: inherit;
+      background: #fff;
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: monospace;
+    }
+    textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 14px;
+    }
+    button:hover { background: #1d4ed8; }
+    .status {
+      margin: 10px 0 18px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .error { color: #b91c1c; }
+    .results { display: grid; gap: 14px; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      background: #fff;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .meta { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+    .summary {
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <h1>Playlist Transcript Summarizer</h1>
+    <p>Paste up to 25 YouTube video IDs from your playlist. Choose a summary length, then generate summaries in the browser.</p>
+
+    <label for="videoIds">Video IDs</label>
+    <textarea id="videoIds" placeholder="dQw4w9WgXcQ
+L_X3vY7fiwQ
+..."></textarea>
+
+    <label for="summaryLength">Summary Length</label>
+    <select id="summaryLength">
+      <option value="short">Short</option>
+      <option value="standard" selected>Standard</option>
+      <option value="long">Long</option>
+    </select>
+
+    <button id="summarizeBtn" type="button">Summarize Videos</button>
+    <button onclick="clearAll()">Clear</button>
+
+    <div id="status" class="status" style="display:none;"></div>
+    <div id="results" class="results"></div>
+  </div>
+
+<script>
+  const config = {
+    maxVideos: 25,
+    transcriptBase: "https://youtube-transcript.ai/transcript/"
+  };
+
+  function parseIds(text) {
+    return [...new Set(
+      text.split(/[\s,]+/g)
+        .map(s => s.trim())
+        .filter(Boolean)
+        .filter(s => /^[a-zA-Z0-9_-]{11}$/.test(s))
+    )].slice(0, config.maxVideos);
+  }
+
+  async function fetchTranscript(videoId) {
+    const url = `${config.transcriptBase}${encodeURIComponent(videoId)}.txt`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Transcript unavailable");
+    return await res.text();
+  }
+
+  function summarizeText(text, mode) {
+    const clean = text
+      .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const STOP_WORDS = new Set([
+      "a","about","above","after","again","all","also","am","an","and","any","are","as","at",
+      "be","because","been","before","being","between","both","but","by","can","did","do",
+      "does","doing","during","each","for","from","further","get","got","had","has","have",
+      "having","he","her","here","him","his","how","i","if","in","into","is","it","its",
+      "just","know","let","like","me","more","most","my","no","not","now","of","off","on",
+      "once","only","or","other","our","out","over","own","re","said","same","she","should",
+      "so","some","such","than","that","the","their","them","then","there","these","they",
+      "this","those","through","to","too","under","until","up","very","was","we","were",
+      "what","when","where","which","while","who","will","with","would","you","your",
+      "uh","um","yeah","okay","ok","gonna","gotta","wanna","kinda","sorta","actually",
+      "basically","literally","really","right","mean","think","know","going","want","need"
+    ]);
+
+    function tokenize(t) {
+      return t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 3 && !STOP_WORDS.has(w));
+    }
+
+    function extractTopKeywords(t, n) {
+      const freq = {};
+      for (const w of tokenize(t)) freq[w] = (freq[w] || 0) + 1;
+      return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, n).map(([w]) => w);
+    }
+
+    function extractBigrams(t, maxCount) {
+      const words = tokenize(t);
+      const freq = {};
+      for (let i = 0; i < words.length - 1; i++) {
+        const bg = words[i] + " " + words[i + 1];
+        freq[bg] = (freq[bg] || 0) + 1;
+      }
+      return Object.entries(freq).filter(([, c]) => c > 1).sort((a, b) => b[1] - a[1]).slice(0, maxCount).map(([p]) => p);
+    }
+
+    function titleCase(str) {
+      return str.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function joinList(items) {
+      if (items.length === 0) return "";
+      if (items.length === 1) return items[0];
+      if (items.length === 2) return items[0] + " and " + items[1];
+      return items.slice(0, -1).join(", ") + ", and " + items[items.length - 1];
+    }
+
+    const text2 = clean.slice(0, 15000);
+    const keywords = extractTopKeywords(text2, 20);
+    const bigrams = extractBigrams(text2, 5);
+
+    if (keywords.length === 0) return "This video presents a discussion of the main ideas covered throughout the transcript.";
+
+    const primaryTopics = (bigrams.length > 0 ? bigrams.slice(0, 3) : keywords.slice(0, 3)).map(titleCase);
+    const usedWords = new Set(bigrams.flatMap(b => b.split(" ")));
+    const secondaryKeywords = keywords.filter(k => !usedWords.has(k)).slice(0, 5).map(titleCase);
+    const thirdSet = keywords.filter(k => !usedWords.has(k)).slice(5, 9).map(titleCase);
+
+    let summary = "In this video, the presenter explores " + joinList(primaryTopics);
+
+    if (secondaryKeywords.length > 0) summary += ", alongside key concepts such as " + joinList(secondaryKeywords);
+    summary += ".";
+
+    if (mode === "brief") return summary;
+
+    if (mode === "standard") {
+      summary += thirdSet.length > 0
+        ? " The discussion also touches on " + joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
+        : " The content gives viewers a clear look at these topics and their practical significance.";
+      return summary;
+    }
+
+    summary += thirdSet.length > 0
+      ? " The discussion also touches on " + joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
+      : " The content gives viewers a clear look at these topics and their practical significance.";
+    summary += " Overall, the video stays focused on the main ideas and connects them to useful context for the viewer.";
+    return summary;
+  }
+
+  async function run() {
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+    const input = document.getElementById("videoIds").value.trim();
+    const mode = document.getElementById("summaryLength").value;
+
+    results.innerHTML = "";
+    status.style.display = "block";
+    status.textContent = "Running...";
+
+    const ids = parseIds(input);
+    if (!ids.length) {
+      status.textContent = "Please paste at least one valid YouTube video ID.";
+      return;
+    }
+
+    try {
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `<h3>Video ${i + 1}</h3><div class="summary">Loading...</div>`;
+        results.appendChild(card);
+
+        const transcript = await fetchTranscript(id);
+        const summary = summarizeText(transcript, mode);
+        card.querySelector(".summary").textContent = summary;
+      }
+      status.textContent = `Done. Processed ${ids.length} video(s).`;
+    } catch (err) {
+      status.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  function clearAll() {
+    document.getElementById("videoIds").value = "";
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("status").style.display = "none";
+    document.getElementById("status").textContent = "";
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("summarizeBtn").addEventListener("click", run);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+  });
+
+
+
+</script>
+</body>
+</html>
