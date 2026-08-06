@@ -34,8 +34,26 @@ console.log(`Total Unique Videos Found: ${videoIds.size}`);
 
 ```
 
+### Structure 
 
-## Setup v1
+```playlist-summarizer/
+├── index.html
+├── css/
+│   └── styles.css
+└── js/
+    ├── config.js
+    ├── stopwords.js
+    ├── nlp.js
+    ├── summarizer.js
+    ├── transcript.js
+    ├── ui.js
+    └── app.js
+```
+
+
+---
+
+## Setup v1 (archived) 
 
 Pick Gemini or OpenAI, paste your own API key (stored only in your browser via localStorage if you check "remember"), set your newsletter's name/voice/CTA
 
