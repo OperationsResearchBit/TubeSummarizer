@@ -9,25 +9,32 @@
 <body>
   <div class="shell">
     <div class="header-row">
-      <img src="images/logo.jpg" alt="Logo" class="logo" />
+      <!-- FIXED: Logo wrapped in a home link -->
+      <a href="index.html" class="logo-link">
+        <img src="images/logo.jpg" alt="Playlist Transcript Summarizer Home" class="logo" />
+      </a>
       <h1>Playlist Transcript Summarizer</h1>
     </div>
+    
     <p>Paste up to 25 YouTube video IDs from your playlist. Choose a summary length, then generate summaries in the browser.</p>
 
-    <label for="videoIds">Video IDs</label>
-    <textarea id="videoIds" placeholder="dQw4w9WgXcQ
-L_X3vY7fiwQ
-..."></textarea>
+    <!-- FIXED: Grouped inputs into a semantic form structure -->
+    <form id="summarizerForm">
+      <label for="videoIds">Video IDs</label>
+      <textarea id="videoIds" placeholder="dQw4w9WgXcQ&#10;L_X3vY7fiwQ&#10;..."></textarea>
 
-    <label for="summaryLength">Summary Length</label>
-    <select id="summaryLength">
-      <option value="short">Short</option>
-      <option value="standard" selected>Standard</option>
-      <option value="long">Long</option>
-    </select>
+      <label for="summaryLength">Summary Length</label>
+      <select id="summaryLength">
+        <option value="short">Short</option>
+        <option value="standard" selected>Standard</option>
+        <option value="long">Long</option>
+      </select>
 
-    <button id="summarizeBtn" type="button">Summarize Videos</button>
-    <button id="clearBtn" type="button">Clear</button>
+      <div class="form-actions">
+        <button id="summarizeBtn" type="button">Summarize Videos</button>
+        <button id="clearBtn" type="button">Clear</button>
+      </div>
+    </form>
 
     <div id="status" class="status" style="display:none;"></div>
     <div id="results" class="results"></div>
