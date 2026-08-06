@@ -96,6 +96,25 @@
       line-height: 1.6;
       white-space: pre-wrap;
     }
+    .summary p {
+      color: var(--text);
+      margin: 0 0 12px;
+    }
+    .key-points {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .key-points-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .key-points li {
+      margin-bottom: 6px;
+    }
   </style>
 </head>
 <body>
@@ -144,6 +163,8 @@ L_X3vY7fiwQ
     return await res.text();
   }
 
+  // Returns { paragraph: string, bullets: string[] }
+  // bullets is empty for "short" and "standard" modes.
   function summarizeText(text, mode) {
     const clean = text
       .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
@@ -161,11 +182,38 @@ L_X3vY7fiwQ
       "this","those","through","to","too","under","until","up","very","was","we","were",
       "what","when","where","which","while","who","will","with","would","you","your",
       "uh","um","yeah","okay","ok","gonna","gotta","wanna","kinda","sorta","actually",
-      "basically","literally","really","right","mean","think","know","going","want","need"
+      "basically","literally","really","right","mean","think","know","going","want","need",
+      // Website / player boilerplate that leaks into transcripts (links, CTAs, disclaimers)
+      "https","http","www","youtube","youtu","com","org","net","transcript","transcripts",
+      "caption","captions","subtitle","subtitles","video","videos","watch","watching","watched",
+      "channel","subscribe","subscribed","subscribing","click","link","links","description",
+      "below","above","comment","comments","notification","notifications","bell","icon",
+      // Generic filler / low-information words that rank high by frequency but carry no topic signal
+      "make","made","making","makes","sure","still","seen","see","saw","look","looking",
+      "looked","looks","example","examples","exactly","probably","maybe","kind","kinds",
+      "sort","sorts","thing","things","stuff","lot","lots","way","ways","place","places",
+      "taking","take","taken","takes","took","back","come","comes","coming","came","put",
+      "puts","putting","else","everything","something","anything","nothing","someone",
+      "anyone","everyone","nobody","quite","pretty","little","big","small","good","great",
+      "well","better","best","worse","worst","thank","thanks","please","welcome","hello",
+      "hey","guys","folks","everybody","truly","impressive","incredible","amazing","awesome",
+      "fantastic","wonderful","terrible","horrible","huge","massive","tiny","definitely",
+      "certainly","absolutely","totally","completely","obviously","clearly","honestly",
+      "essentially","ultimately","first","second","third","next","last","one","two","three",
+      "four","five","six","seven","eight","nine","ten"
     ]);
 
+    // 11-character video-ID-like tokens (e.g. "Lz9lh3qypo8") that sometimes leak into
+    // transcript text via embedded links; these aren't real content words.
+    const ID_LIKE = /^[a-z0-9_-]{10,12}$/;
+
     function tokenize(t) {
-      return t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 3 && !STOP_WORDS.has(w));
+      return t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w =>
+        w.length > 3 &&
+        !STOP_WORDS.has(w) &&
+        !/\d/.test(w) &&        // drop tokens containing digits (IDs, timestamps, stray numbers)
+        !ID_LIKE.test(w)
+      );
     }
 
     function extractTopKeywords(t, n) {
@@ -195,36 +243,109 @@ L_X3vY7fiwQ
       return items.slice(0, -1).join(", ") + ", and " + items[items.length - 1];
     }
 
-    const text2 = clean.slice(0, 15000);
-    const keywords = extractTopKeywords(text2, 20);
-    const bigrams = extractBigrams(text2, 5);
+    // Pull a bigger pool for "long" mode so paragraph + bullets don't repeat the same terms.
+    const poolSize = mode === "long" ? 32 : 20;
+    const bigramPoolSize = mode === "long" ? 10 : 5;
 
-    if (keywords.length === 0) return "This video presents a discussion of the main ideas covered throughout the transcript.";
+    const text2 = clean.slice(0, 15000);
+    const keywords = extractTopKeywords(text2, poolSize);
+    const bigrams = extractBigrams(text2, bigramPoolSize);
+
+    if (keywords.length === 0) {
+      const fallback = "This video presents a discussion of the main ideas covered throughout the transcript.";
+      return mode === "long"
+        ? { paragraph: fallback, bullets: [] }
+        : { paragraph: fallback, bullets: [] };
+    }
 
     const primaryTopics = (bigrams.length > 0 ? bigrams.slice(0, 3) : keywords.slice(0, 3)).map(titleCase);
-    const usedWords = new Set(bigrams.flatMap(b => b.split(" ")));
-    const secondaryKeywords = keywords.filter(k => !usedWords.has(k)).slice(0, 5).map(titleCase);
-    const thirdSet = keywords.filter(k => !usedWords.has(k)).slice(5, 9).map(titleCase);
+    const usedInPrimary = new Set(bigrams.slice(0, 3).flatMap(b => b.split(" ")).concat(keywords.slice(0, 3)));
+
+    const secondaryKeywords = keywords.filter(k => !usedInPrimary.has(k)).slice(0, 5).map(titleCase);
+    const usedAfterSecondary = new Set([...usedInPrimary, ...keywords.filter(k => !usedInPrimary.has(k)).slice(0, 5)]);
+
+    const thirdSet = keywords.filter(k => !usedAfterSecondary.has(k)).slice(0, 4).map(titleCase);
+    const usedAfterThird = new Set([...usedAfterSecondary, ...keywords.filter(k => !usedAfterSecondary.has(k)).slice(0, 4)]);
 
     let summary = "In this video, the presenter explores " + joinList(primaryTopics);
-
     if (secondaryKeywords.length > 0) summary += ", alongside key concepts such as " + joinList(secondaryKeywords);
     summary += ".";
 
-    if (mode === "brief") return summary;
+    if (mode === "short") {
+      return { paragraph: summary, bullets: [] };
+    }
 
     if (mode === "standard") {
       summary += thirdSet.length > 0
         ? " The discussion also touches on " + joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
         : " The content gives viewers a clear look at these topics and their practical significance.";
-      return summary;
+      return { paragraph: summary, bullets: [] };
     }
+
+    // ---- Long mode: 3-5 sentence paragraph + 3-6 key point bullets ----
 
     summary += thirdSet.length > 0
       ? " The discussion also touches on " + joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
       : " The content gives viewers a clear look at these topics and their practical significance.";
     summary += " Overall, the video stays focused on the main ideas and connects them to useful context for the viewer.";
-    return summary;
+
+    // Build a leftover pool (unused bigrams first, then unused keywords) to source bullets from,
+    // so bullets surface *different* material than the paragraph rather than repeating it.
+    const leftoverBigrams = bigrams
+      .filter(b => !b.split(" ").every(w => usedAfterThird.has(w)))
+      .slice(3);
+    const leftoverKeywords = keywords.filter(k => !usedAfterThird.has(k));
+
+    const bulletTopics = [...leftoverBigrams, ...leftoverKeywords]
+      .map(titleCase)
+      .filter((v, i, arr) => arr.indexOf(v) === i) // dedupe
+      .slice(0, 6);
+
+    const templates = [
+      t => `Highlights ${t} as a recurring theme throughout the video.`,
+      t => `Explains how ${t} connects to the broader topic being discussed.`,
+      t => `Offers practical takeaways related to ${t}.`,
+      t => `Breaks down why ${t} matters in this context.`,
+      t => `Draws a connection between ${t} and real-world application.`,
+      t => `Provides additional perspective on ${t}.`
+    ];
+
+    let bullets = bulletTopics.map((topic, i) => templates[i % templates.length](topic));
+
+    // Ensure at least 3 bullets: if the transcript was thin on distinct topics,
+    // fall back to reusing paragraph topics with different phrasing.
+    if (bullets.length < 3) {
+      const fallbackTopics = [...primaryTopics, ...secondaryKeywords]
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .slice(0, 3 - bullets.length);
+      fallbackTopics.forEach((topic, i) => {
+        bullets.push(templates[(bullets.length + i) % templates.length](topic));
+      });
+    }
+
+    bullets = bullets.slice(0, 6);
+
+    return { paragraph: summary, bullets };
+  }
+
+  function renderSummary(container, result) {
+    const paragraphHtml = `<p>${escapeHtml(result.paragraph)}</p>`;
+    let bulletsHtml = "";
+    if (result.bullets && result.bullets.length > 0) {
+      bulletsHtml = `
+        <div class="key-points-label">Key Points</div>
+        <ul class="key-points">
+          ${result.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join("")}
+        </ul>
+      `;
+    }
+    container.innerHTML = paragraphHtml + bulletsHtml;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   async function run() {
@@ -252,8 +373,8 @@ L_X3vY7fiwQ
         results.appendChild(card);
 
         const transcript = await fetchTranscript(id);
-        const summary = summarizeText(transcript, mode);
-        card.querySelector(".summary").textContent = summary;
+        const result = summarizeText(transcript, mode);
+        renderSummary(card.querySelector(".summary"), result);
       }
       status.textContent = `Done. Processed ${ids.length} video(s).`;
     } catch (err) {
@@ -270,11 +391,7 @@ L_X3vY7fiwQ
 
   document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("summarizeBtn").addEventListener("click", run);
-    document.getElementById("clearBtn").addEventListener("click", clearAll);
   });
-
-
-
 </script>
 </body>
 </html>
