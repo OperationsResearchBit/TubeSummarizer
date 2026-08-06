@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Playlist Transcript Summarizer</title>
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="shell">
-    <h1>Playlist Transcript Summarizer</h1>
+    <div class="header-row">
+      <img src="images/logo.jpg" alt="Logo" class="logo" />
+      <h1>Playlist Transcript Summarizer</h1>
+    </div>
     <p>Paste up to 25 YouTube video IDs from your playlist. Choose a summary length, then generate summaries in the browser.</p>
 
     <label for="videoIds">Video IDs</label>
@@ -30,6 +33,6 @@ L_X3vY7fiwQ
     <div id="results" class="results"></div>
   </div>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
