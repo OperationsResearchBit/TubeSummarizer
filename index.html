@@ -135,43 +135,41 @@ L_X3vY7fiwQ
     </select>
 
     <button id="summarizeBtn" type="button">Summarize Videos</button>
-    <button onclick="clearAll()">Clear</button>
+    <button id="clearBtn" onclick="APP.clearAll()">Clear</button>
 
     <div id="status" class="status" style="display:none;"></div>
     <div id="results" class="results"></div>
   </div>
 
 <script>
-  const config = {
+  // ============================================================
+  // CONFIG
+  // All tunable numbers/strings live here. Change pool sizes, the
+  // transcript API endpoint, or bullet count limits without
+  // touching any logic below.
+  // ============================================================
+  const CONFIG = {
     maxVideos: 25,
-    transcriptBase: "https://youtube-transcript.ai/transcript/"
+    transcriptBase: "https://youtube-transcript.ai/transcript/",
+    transcriptCharLimit: 15000,
+    pool: {
+      short:    { keywords: 20, bigrams: 5 },
+      standard: { keywords: 20, bigrams: 5 },
+      long:     { keywords: 32, bigrams: 10 }
+    },
+    bullets: { min: 3, max: 6 }
   };
 
-  function parseIds(text) {
-    return [...new Set(
-      text.split(/[\s,]+/g)
-        .map(s => s.trim())
-        .filter(Boolean)
-        .filter(s => /^[a-zA-Z0-9_-]{11}$/.test(s))
-    )].slice(0, config.maxVideos);
-  }
-
-  async function fetchTranscript(videoId) {
-    const url = `${config.transcriptBase}${encodeURIComponent(videoId)}.txt`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Transcript unavailable");
-    return await res.text();
-  }
-
-  // Returns { paragraph: string, bullets: string[] }
-  // bullets is empty for "short" and "standard" modes.
-  function summarizeText(text, mode) {
-    const clean = text
-      .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const STOP_WORDS = new Set([
+  // ============================================================
+  // STOPWORDS
+  // Pure data. Add/remove a word and nothing else needs to change.
+  // Three buckets kept separate so it's obvious what each is for:
+  //   common      -> ordinary English function words
+  //   boilerplate -> website/player chrome that leaks into transcripts
+  //   filler      -> high-frequency but low-information content words
+  // ============================================================
+  const STOPWORDS = {
+    common: new Set([
       "a","about","above","after","again","all","also","am","an","and","any","are","as","at",
       "be","because","been","before","being","between","both","but","by","can","did","do",
       "does","doing","during","each","for","from","further","get","got","had","has","have",
@@ -182,13 +180,15 @@ L_X3vY7fiwQ
       "this","those","through","to","too","under","until","up","very","was","we","were",
       "what","when","where","which","while","who","will","with","would","you","your",
       "uh","um","yeah","okay","ok","gonna","gotta","wanna","kinda","sorta","actually",
-      "basically","literally","really","right","mean","think","know","going","want","need",
-      // Website / player boilerplate that leaks into transcripts (links, CTAs, disclaimers)
+      "basically","literally","really","right","mean","think","going","want","need"
+    ]),
+    boilerplate: new Set([
       "https","http","www","youtube","youtu","com","org","net","transcript","transcripts",
       "caption","captions","subtitle","subtitles","video","videos","watch","watching","watched",
       "channel","subscribe","subscribed","subscribing","click","link","links","description",
-      "below","above","comment","comments","notification","notifications","bell","icon",
-      // Generic filler / low-information words that rank high by frequency but carry no topic signal
+      "below","above","comment","comments","notification","notifications","bell","icon"
+    ]),
+    filler: new Set([
       "make","made","making","makes","sure","still","seen","see","saw","look","looking",
       "looked","looks","example","examples","exactly","probably","maybe","kind","kinds",
       "sort","sorts","thing","things","stuff","lot","lots","way","ways","place","places",
@@ -201,197 +201,307 @@ L_X3vY7fiwQ
       "certainly","absolutely","totally","completely","obviously","clearly","honestly",
       "essentially","ultimately","first","second","third","next","last","one","two","three",
       "four","five","six","seven","eight","nine","ten"
-    ]);
+    ]),
+    // 10-12 char ID-like tokens (e.g. "Lz9lh3qypo8") that leak in via embedded links.
+    idLike: /^[a-z0-9_-]{10,12}$/
+  };
 
-    // 11-character video-ID-like tokens (e.g. "Lz9lh3qypo8") that sometimes leak into
-    // transcript text via embedded links; these aren't real content words.
-    const ID_LIKE = /^[a-z0-9_-]{10,12}$/;
+  // ============================================================
+  // NLP
+  // Tokenizing and keyword/bigram extraction. Pure functions —
+  // no knowledge of summary structure, DOM, or app state.
+  // ============================================================
+  const NLP = {
+    tokenize(text) {
+      return text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter(w =>
+          w.length > 3 &&
+          !STOPWORDS.common.has(w) &&
+          !STOPWORDS.boilerplate.has(w) &&
+          !STOPWORDS.filler.has(w) &&
+          !/\d/.test(w) &&              // drop tokens with digits (IDs, timestamps)
+          !STOPWORDS.idLike.test(w)
+        );
+    },
 
-    function tokenize(t) {
-      return t.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w =>
-        w.length > 3 &&
-        !STOP_WORDS.has(w) &&
-        !/\d/.test(w) &&        // drop tokens containing digits (IDs, timestamps, stray numbers)
-        !ID_LIKE.test(w)
-      );
-    }
-
-    function extractTopKeywords(t, n) {
+    topKeywords(text, n) {
       const freq = {};
-      for (const w of tokenize(t)) freq[w] = (freq[w] || 0) + 1;
-      return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, n).map(([w]) => w);
-    }
+      for (const w of this.tokenize(text)) freq[w] = (freq[w] || 0) + 1;
+      return Object.entries(freq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n)
+        .map(([w]) => w);
+    },
 
-    function extractBigrams(t, maxCount) {
-      const words = tokenize(t);
+    bigrams(text, maxCount) {
+      const words = this.tokenize(text);
       const freq = {};
       for (let i = 0; i < words.length - 1; i++) {
         const bg = words[i] + " " + words[i + 1];
         freq[bg] = (freq[bg] || 0) + 1;
       }
-      return Object.entries(freq).filter(([, c]) => c > 1).sort((a, b) => b[1] - a[1]).slice(0, maxCount).map(([p]) => p);
-    }
+      return Object.entries(freq)
+        .filter(([, c]) => c > 1)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, maxCount)
+        .map(([p]) => p);
+    },
 
-    function titleCase(str) {
+    titleCase(str) {
       return str.replace(/\b\w/g, c => c.toUpperCase());
-    }
+    },
 
-    function joinList(items) {
+    joinList(items) {
       if (items.length === 0) return "";
       if (items.length === 1) return items[0];
       if (items.length === 2) return items[0] + " and " + items[1];
       return items.slice(0, -1).join(", ") + ", and " + items[items.length - 1];
     }
+  };
 
-    // Pull a bigger pool for "long" mode so paragraph + bullets don't repeat the same terms.
-    const poolSize = mode === "long" ? 32 : 20;
-    const bigramPoolSize = mode === "long" ? 10 : 5;
-
-    const text2 = clean.slice(0, 15000);
-    const keywords = extractTopKeywords(text2, poolSize);
-    const bigrams = extractBigrams(text2, bigramPoolSize);
-
-    if (keywords.length === 0) {
-      const fallback = "This video presents a discussion of the main ideas covered throughout the transcript.";
-      return mode === "long"
-        ? { paragraph: fallback, bullets: [] }
-        : { paragraph: fallback, bullets: [] };
-    }
-
-    const primaryTopics = (bigrams.length > 0 ? bigrams.slice(0, 3) : keywords.slice(0, 3)).map(titleCase);
-    const usedInPrimary = new Set(bigrams.slice(0, 3).flatMap(b => b.split(" ")).concat(keywords.slice(0, 3)));
-
-    const secondaryKeywords = keywords.filter(k => !usedInPrimary.has(k)).slice(0, 5).map(titleCase);
-    const usedAfterSecondary = new Set([...usedInPrimary, ...keywords.filter(k => !usedInPrimary.has(k)).slice(0, 5)]);
-
-    const thirdSet = keywords.filter(k => !usedAfterSecondary.has(k)).slice(0, 4).map(titleCase);
-    const usedAfterThird = new Set([...usedAfterSecondary, ...keywords.filter(k => !usedAfterSecondary.has(k)).slice(0, 4)]);
-
-    let summary = "In this video, the presenter explores " + joinList(primaryTopics);
-    if (secondaryKeywords.length > 0) summary += ", alongside key concepts such as " + joinList(secondaryKeywords);
-    summary += ".";
-
-    if (mode === "short") {
-      return { paragraph: summary, bullets: [] };
-    }
-
-    if (mode === "standard") {
-      summary += thirdSet.length > 0
-        ? " The discussion also touches on " + joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
-        : " The content gives viewers a clear look at these topics and their practical significance.";
-      return { paragraph: summary, bullets: [] };
-    }
-
-    // ---- Long mode: 3-5 sentence paragraph + 3-6 key point bullets ----
-
-    summary += thirdSet.length > 0
-      ? " The discussion also touches on " + joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
-      : " The content gives viewers a clear look at these topics and their practical significance.";
-    summary += " Overall, the video stays focused on the main ideas and connects them to useful context for the viewer.";
-
-    // Build a leftover pool (unused bigrams first, then unused keywords) to source bullets from,
-    // so bullets surface *different* material than the paragraph rather than repeating it.
-    const leftoverBigrams = bigrams
-      .filter(b => !b.split(" ").every(w => usedAfterThird.has(w)))
-      .slice(3);
-    const leftoverKeywords = keywords.filter(k => !usedAfterThird.has(k));
-
-    const bulletTopics = [...leftoverBigrams, ...leftoverKeywords]
-      .map(titleCase)
-      .filter((v, i, arr) => arr.indexOf(v) === i) // dedupe
-      .slice(0, 6);
-
-    const templates = [
+  // ============================================================
+  // SUMMARIZER
+  // Turns raw transcript text into { paragraph, bullets }.
+  // Depends only on NLP + CONFIG — no DOM, no network.
+  // ============================================================
+  const SUMMARIZER = {
+    templates: [
       t => `Highlights ${t} as a recurring theme throughout the video.`,
       t => `Explains how ${t} connects to the broader topic being discussed.`,
       t => `Offers practical takeaways related to ${t}.`,
       t => `Breaks down why ${t} matters in this context.`,
       t => `Draws a connection between ${t} and real-world application.`,
       t => `Provides additional perspective on ${t}.`
-    ];
+    ],
 
-    let bullets = bulletTopics.map((topic, i) => templates[i % templates.length](topic));
+    clean(text) {
+      return text
+        .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, CONFIG.transcriptCharLimit);
+    },
 
-    // Ensure at least 3 bullets: if the transcript was thin on distinct topics,
-    // fall back to reusing paragraph topics with different phrasing.
-    if (bullets.length < 3) {
-      const fallbackTopics = [...primaryTopics, ...secondaryKeywords]
-        .filter((v, i, arr) => arr.indexOf(v) === i)
-        .slice(0, 3 - bullets.length);
-      fallbackTopics.forEach((topic, i) => {
-        bullets.push(templates[(bullets.length + i) % templates.length](topic));
-      });
-    }
+    // Splits ranked keywords into three non-overlapping tiers so the
+    // paragraph doesn't repeat itself sentence to sentence.
+    pickTiers(keywords, bigrams) {
+      const primaryTopics = (bigrams.length > 0 ? bigrams.slice(0, 3) : keywords.slice(0, 3))
+        .map(NLP.titleCase);
+      const usedInPrimary = new Set(bigrams.slice(0, 3).flatMap(b => b.split(" ")).concat(keywords.slice(0, 3)));
 
-    bullets = bullets.slice(0, 6);
+      const secondaryRaw = keywords.filter(k => !usedInPrimary.has(k)).slice(0, 5);
+      const secondaryKeywords = secondaryRaw.map(NLP.titleCase);
+      const usedAfterSecondary = new Set([...usedInPrimary, ...secondaryRaw]);
 
-    return { paragraph: summary, bullets };
-  }
+      const thirdRaw = keywords.filter(k => !usedAfterSecondary.has(k)).slice(0, 4);
+      const thirdSet = thirdRaw.map(NLP.titleCase);
+      const usedAfterThird = new Set([...usedAfterSecondary, ...thirdRaw]);
 
-  function renderSummary(container, result) {
-    const paragraphHtml = `<p>${escapeHtml(result.paragraph)}</p>`;
-    let bulletsHtml = "";
-    if (result.bullets && result.bullets.length > 0) {
-      bulletsHtml = `
-        <div class="key-points-label">Key Points</div>
-        <ul class="key-points">
-          ${result.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join("")}
-        </ul>
-      `;
-    }
-    container.innerHTML = paragraphHtml + bulletsHtml;
-  }
+      return { primaryTopics, secondaryKeywords, thirdSet, usedAfterThird };
+    },
 
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  async function run() {
-    const status = document.getElementById("status");
-    const results = document.getElementById("results");
-    const input = document.getElementById("videoIds").value.trim();
-    const mode = document.getElementById("summaryLength").value;
-
-    results.innerHTML = "";
-    status.style.display = "block";
-    status.textContent = "Running...";
-
-    const ids = parseIds(input);
-    if (!ids.length) {
-      status.textContent = "Please paste at least one valid YouTube video ID.";
-      return;
-    }
-
-    try {
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `<h3>Video ${i + 1}</h3><div class="summary">Loading...</div>`;
-        results.appendChild(card);
-
-        const transcript = await fetchTranscript(id);
-        const result = summarizeText(transcript, mode);
-        renderSummary(card.querySelector(".summary"), result);
+    buildParagraph({ primaryTopics, secondaryKeywords, thirdSet }, mode) {
+      let summary = "In this video, the presenter explores " + NLP.joinList(primaryTopics);
+      if (secondaryKeywords.length > 0) {
+        summary += ", alongside key concepts such as " + NLP.joinList(secondaryKeywords);
       }
-      status.textContent = `Done. Processed ${ids.length} video(s).`;
-    } catch (err) {
-      status.textContent = `Error: ${err.message}`;
+      summary += ".";
+
+      if (mode === "short") return summary;
+
+      summary += thirdSet.length > 0
+        ? " The discussion also touches on " + NLP.joinList(thirdSet) + ", giving viewers a broader understanding of the subject matter."
+        : " The content gives viewers a clear look at these topics and their practical significance.";
+
+      if (mode === "standard") return summary;
+
+      // long
+      summary += " Overall, the video stays focused on the main ideas and connects them to useful context for the viewer.";
+      return summary;
+    },
+
+    buildBullets({ primaryTopics, secondaryKeywords, usedAfterThird }, keywords, bigrams) {
+      const leftoverBigrams = bigrams
+        .filter(b => !b.split(" ").every(w => usedAfterThird.has(w)))
+        .slice(3);
+      const leftoverKeywords = keywords.filter(k => !usedAfterThird.has(k));
+
+      const bulletTopics = [...leftoverBigrams, ...leftoverKeywords]
+        .map(NLP.titleCase)
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .slice(0, CONFIG.bullets.max);
+
+      let bullets = bulletTopics.map((topic, i) => this.templates[i % this.templates.length](topic));
+
+      if (bullets.length < CONFIG.bullets.min) {
+        const fallbackTopics = [...primaryTopics, ...secondaryKeywords]
+          .filter((v, i, arr) => arr.indexOf(v) === i)
+          .slice(0, CONFIG.bullets.min - bullets.length);
+        fallbackTopics.forEach((topic, i) => {
+          bullets.push(this.templates[(bullets.length + i) % this.templates.length](topic));
+        });
+      }
+
+      return bullets.slice(0, CONFIG.bullets.max);
+    },
+
+    // Public entry point. Returns { paragraph: string, bullets: string[] }.
+    // bullets is always [] for "short" and "standard".
+    summarize(text, mode) {
+      const cleaned = this.clean(text);
+      const { keywords: kN, bigrams: bN } = CONFIG.pool[mode] || CONFIG.pool.standard;
+      const keywords = NLP.topKeywords(cleaned, kN);
+      const bigramList = NLP.bigrams(cleaned, bN);
+
+      if (keywords.length === 0) {
+        return {
+          paragraph: "This video presents a discussion of the main ideas covered throughout the transcript.",
+          bullets: []
+        };
+      }
+
+      const tiers = this.pickTiers(keywords, bigramList);
+      const paragraph = this.buildParagraph(tiers, mode);
+      const bullets = mode === "long" ? this.buildBullets(tiers, keywords, bigramList) : [];
+
+      return { paragraph, bullets };
     }
-  }
+  };
 
-  function clearAll() {
-    document.getElementById("videoIds").value = "";
-    document.getElementById("results").innerHTML = "";
-    document.getElementById("status").style.display = "none";
-    document.getElementById("status").textContent = "";
-  }
+  // ============================================================
+  // TRANSCRIPT
+  // The only module that talks to the network or parses raw
+  // user input into video IDs.
+  // ============================================================
+  const TRANSCRIPT = {
+    parseIds(text) {
+      return [...new Set(
+        text.split(/[\s,]+/g)
+          .map(s => s.trim())
+          .filter(Boolean)
+          .filter(s => /^[a-zA-Z0-9_-]{11}$/.test(s))
+      )].slice(0, CONFIG.maxVideos);
+    },
 
-  document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("summarizeBtn").addEventListener("click", run);
-  });
+    async fetch(videoId) {
+      const url = `${CONFIG.transcriptBase}${encodeURIComponent(videoId)}.txt`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Transcript unavailable");
+      return await res.text();
+    }
+  };
+
+  // ============================================================
+  // UI
+  // DOM rendering and escaping only. No business logic here.
+  // ============================================================
+  const UI = {
+    els: {
+      videoIds: () => document.getElementById("videoIds"),
+      summaryLength: () => document.getElementById("summaryLength"),
+      status: () => document.getElementById("status"),
+      results: () => document.getElementById("results")
+    },
+
+    escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    },
+
+    setStatus(text) {
+      const status = this.els.status();
+      status.style.display = "block";
+      status.textContent = text;
+    },
+
+    hideStatus() {
+      const status = this.els.status();
+      status.style.display = "none";
+      status.textContent = "";
+    },
+
+    clearResults() {
+      this.els.results().innerHTML = "";
+    },
+
+    addLoadingCard(index) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `<h3>Video ${index + 1}</h3><div class="summary">Loading...</div>`;
+      this.els.results().appendChild(card);
+      return card;
+    },
+
+    renderSummary(card, result) {
+      const paragraphHtml = `<p>${this.escapeHtml(result.paragraph)}</p>`;
+      let bulletsHtml = "";
+      if (result.bullets && result.bullets.length > 0) {
+        bulletsHtml = `
+          <div class="key-points-label">Key Points</div>
+          <ul class="key-points">
+            ${result.bullets.map(b => `<li>${this.escapeHtml(b)}</li>`).join("")}
+          </ul>
+        `;
+      }
+      card.querySelector(".summary").innerHTML = paragraphHtml + bulletsHtml;
+    },
+
+    clearInputs() {
+      this.els.videoIds().value = "";
+    }
+  };
+
+  // ============================================================
+  // APP
+  // Thin controller: wires TRANSCRIPT + SUMMARIZER + UI together.
+  // Should stay free of extraction/rendering logic — if you find
+  // yourself adding real logic here, it probably belongs in one
+  // of the modules above.
+  // ============================================================
+  const APP = {
+    async run() {
+      const input = UI.els.videoIds().value.trim();
+      const mode = UI.els.summaryLength().value;
+
+      UI.clearResults();
+      UI.setStatus("Running...");
+
+      const ids = TRANSCRIPT.parseIds(input);
+      if (!ids.length) {
+        UI.setStatus("Please paste at least one valid YouTube video ID.");
+        return;
+      }
+
+      try {
+        for (let i = 0; i < ids.length; i++) {
+          const card = UI.addLoadingCard(i);
+          const transcript = await TRANSCRIPT.fetch(ids[i]);
+          const result = SUMMARIZER.summarize(transcript, mode);
+          UI.renderSummary(card, result);
+        }
+        UI.setStatus(`Done. Processed ${ids.length} video(s).`);
+      } catch (err) {
+        UI.setStatus(`Error: ${err.message}`);
+      }
+    },
+
+    clearAll() {
+      UI.clearInputs();
+      UI.clearResults();
+      UI.hideStatus();
+    },
+
+    init() {
+      document.getElementById("summarizeBtn").addEventListener("click", () => APP.run());
+      document.getElementById("clearBtn")?.addEventListener("click", () => APP.clearAll());
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", () => APP.init());
 </script>
 </body>
 </html>
