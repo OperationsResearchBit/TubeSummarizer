@@ -1,4 +1,4 @@
-# TubeSummarizer
+# TubeSummarizer 
 
 agpl3 
 
@@ -50,6 +50,7 @@ console.log(`Total Unique Videos Found: ${videoIds.size}`);
     └── app.js
 ```
 
+v2
 
 ---
 
