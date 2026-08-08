@@ -12,5 +12,12 @@ export const CONFIG = {
     standard: { keywords: 20, bigrams: 5 },
     long:     { keywords: 32, bigrams: 10 }
   },
-  bullets: { min: 3, max: 6 }
+  bullets: { min: 3, max: 6 },
+  gemini: {
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/",
+    // If Google renames/retires this model, this is the only line to change.
+    model: "gemini-2.0-flash",
+    transcriptCharLimit: 30000,
+    apiKeyStorageKey: "playlistSummarizer_geminiApiKey"
+  }
 };
