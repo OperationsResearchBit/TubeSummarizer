@@ -2,6 +2,8 @@
 // DOM rendering and escaping only. No business logic — this is
 // where you'll work when redesigning the layout or card contents.
 
+import { CONFIG } from "./config.js";
+
 export const UI = {
   els: {
     videoIds: () => document.getElementById("videoIds"),
@@ -9,7 +11,22 @@ export const UI = {
     status: () => document.getElementById("status"),
     results: () => document.getElementById("results"),
     summarizeBtn: () => document.getElementById("summarizeBtn"),
-    clearBtn: () => document.getElementById("clearBtn")
+    clearBtn: () => document.getElementById("clearBtn"),
+    useGemini: () => document.getElementById("useGemini"),
+    geminiKeyRow: () => document.getElementById("geminiKeyRow"),
+    geminiApiKey: () => document.getElementById("geminiApiKey")
+  },
+
+  loadSavedApiKey() {
+    return localStorage.getItem(CONFIG.gemini.apiKeyStorageKey) || "";
+  },
+
+  saveApiKey(key) {
+    localStorage.setItem(CONFIG.gemini.apiKeyStorageKey, key);
+  },
+
+  toggleGeminiKeyRow(show) {
+    this.els.geminiKeyRow().style.display = show ? "block" : "none";
   },
 
   escapeHtml(str) {
