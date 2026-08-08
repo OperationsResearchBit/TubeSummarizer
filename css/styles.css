@@ -22,16 +22,39 @@ body {
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 h1 { margin: 0; font-size: 24px; }
+/* Container for the logo and heading */
 .header-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
+  gap: 16px;          /* Space between logo and text */
+  margin-bottom: 24px; /* Space below the header row */
 }
+/* Make the logo link look like a tight container */
+.logo-link {
+  display: inline-flex;
+  text-decoration: none;
+}
+/* Modern logo styling */
 .logo {
-  height: 40px;
-  width: auto;
-  border-radius: 6px;
+  width: 48px;               /* Shrinks logo to a modern header size */
+  height: 48px;              /* Keeps aspect ratio uniform */
+  object-fit: cover;         /* Prevents squishing or stretching */
+  border-radius: 12px;       /* Sleek, modern rounded corners */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Subtle premium drop shadow */
+  border: 2px solid #e2e8f0; /* Crisp subtle border outline */
+  transition: all 0.2s ease-in-out; /* Smooth hover transition animate */
+}
+/* Hover effect for a professional UI feel */
+.logo:hover {
+  transform: translateY(-2px); /* Slight lift effect */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); /* Deepen shadow on hover */
+  border-color: #3b82f6;       /* Changes border to an accent blue */
+}
+/* Align the text next to the logo */
+.header-row h1 {
+  font-size: 24px;
+  margin: 0;
+  color: #1e293b;
 }
 p { color: var(--muted); margin: 0 0 18px; line-height: 1.5; }
 label {
