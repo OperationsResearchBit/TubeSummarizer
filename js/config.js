@@ -7,11 +7,6 @@ export const CONFIG = {
   maxVideos: 25,
   transcriptBase: "https://youtube-transcript.ai/transcript/",
   transcriptCharLimit: 15000,
-  pool: {
-    short:    { keywords: 20, bigrams: 5 },
-    standard: { keywords: 20, bigrams: 5 },
-    long:     { keywords: 32, bigrams: 10 }
-  },
   bullets: { min: 3, max: 6 },
   gemini: {
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models/",
