@@ -15,26 +15,35 @@
       </a>
       <h1>Playlist Transcript Summarizer</h1>
     </div>
-    
+
     <p>Paste up to 25 YouTube video IDs from your playlist. Choose a summary length, then generate summaries in the browser.</p>
 
-    <!-- FIXED: Grouped inputs into a semantic form structure -->
-    <form id="summarizerForm">
-      <label for="videoIds">Video IDs</label>
-      <textarea id="videoIds" placeholder="dQw4w9WgXcQ&#10;L_X3vY7fiwQ&#10;..."></textarea>
-
-      <label for="summaryLength">Summary Length</label>
-      <select id="summaryLength">
-        <option value="short">Short</option>
-        <option value="standard" selected>Standard</option>
-        <option value="long">Long</option>
-      </select>
-
-      <div class="form-actions">
-        <button id="summarizeBtn" type="button">Summarize Videos</button>
-        <button id="clearBtn" type="button">Clear</button>
+    <div class="settings">
+      <label class="checkbox-label">
+        <input type="checkbox" id="useGemini" />
+        Use Google Gemini for higher-quality summaries
+      </label>
+      <div id="geminiKeyRow" class="gemini-key-row" style="display:none;">
+        <label for="geminiApiKey">Gemini API Key</label>
+        <input type="password" id="geminiApiKey" placeholder="Paste your Gemini API key" autocomplete="off" />
+        <p class="hint">Stored only in your browser (never uploaded to the repo). Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
       </div>
-    </form>
+    </div>
+
+    <label for="videoIds">Video IDs</label>
+    <textarea id="videoIds" placeholder="dQw4w9WgXcQ
+L_X3vY7fiwQ
+..."></textarea>
+
+    <label for="summaryLength">Summary Length</label>
+    <select id="summaryLength">
+      <option value="short">Short</option>
+      <option value="standard" selected>Standard</option>
+      <option value="long">Long</option>
+    </select>
+
+    <button id="summarizeBtn" type="button">Summarize Videos</button>
+    <button id="clearBtn" type="button">Clear</button>
 
     <div id="status" class="status" style="display:none;"></div>
     <div id="results" class="results"></div>
