@@ -15,18 +15,21 @@ to do: </br>
 
 use this script in console of your youtube playlist to get video IDs  
 
- ```const videoElements = document.querySelectorAll('a#video-title, a#video-title-link, a[href*="/watch?v="]');
+ ```// Paste this directly into your browser console on the YouTube page
 const videoIds = new Set();
+const videoElements = document.querySelectorAll('a[href*="watch?v="]'); // Targets watch links
 
 videoElements.forEach(el => {
-    const href = el.getAttribute('href');
-    if (href) {
-        const urlParams = new URLSearchParams(href.split('?')[1]);
-        const id = urlParams.get('v');
-        if (id && id.length === 11) {
-            videoIds.add(id);
-        }
-    }
+  const href = el.getAttribute('href');
+  if (href) {
+    try {
+      const url = new URL(href, window.location.origin); 
+      const id = url.searchParams.get('v');
+      if (id && id.length === 11) {
+        videoIds.add(id);
+      }
+    } catch (e) {}
+  }
 });
 
 console.log("--- Extracted YouTube Video IDs ---");
