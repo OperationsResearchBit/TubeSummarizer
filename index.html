@@ -14,19 +14,7 @@
       </a>
       <h1>Playlist Transcript Summarizer</h1>
     </div>
-    <p>Paste up to 25 YouTube video IDs from your playlist. Choose a summary length, then generate summaries in the browser.</p>
-
-    <div class="settings">
-      <label class="checkbox-label">
-        <input type="checkbox" id="useGemini" />
-        Use Google Gemini for higher-quality summaries
-      </label>
-      <div id="geminiKeyRow" class="gemini-key-row" style="display:none;">
-        <label for="geminiApiKey">Gemini API Key</label>
-        <input type="password" id="geminiApiKey" placeholder="Paste your Gemini API key" autocomplete="off" />
-        <p class="hint">Stored only in your browser (never uploaded to the repo). Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
-      </div>
-    </div>
+    <p>Paste up to 25 YouTube video IDs from your playlist. Choose a summary length, then generate AI summaries (with an automatic local fallback).</p>
 
     <label for="videoIds">Video IDs</label>
     <textarea id="videoIds" placeholder="dQw4w9WgXcQ

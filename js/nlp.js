@@ -35,11 +35,22 @@ export const NLP = {
   // reliable paragraph breaks, lots of run-ons). Good enough without
   // pulling in a full NLP library.
   splitSentences(text) {
-    return text
+    const raw = text
       .replace(/([.!?])\s+/g, "$1|")
       .split("|")
       .map(s => s.trim())
       .filter(Boolean);
+
+    // Auto-captions often have no punctuation at all, which yields one
+    // giant "sentence". Break anything over 45 words into ~25-word
+    // windows so the scorer still has something to work with.
+    const out = [];
+    for (const s of raw) {
+      const words = s.split(/\s+/);
+      if (words.length <= 45) { out.push(s); continue; }
+      for (let i = 0; i < words.length; i += 25) out.push(words.slice(i, i + 25).join(" "));
+    }
+    return out;
   },
 
   // A sentence stuffed with link/CTA boilerplate ("click the link in

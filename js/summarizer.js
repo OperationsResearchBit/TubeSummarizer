@@ -24,8 +24,7 @@ export const SUMMARIZER = {
     return text
       .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
       .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, CONFIG.transcriptCharLimit);
+      .trim();
   },
 
   // Tries to reach `n` at a strict overlap threshold first (best
